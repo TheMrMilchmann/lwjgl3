@@ -2,6 +2,8 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
+include ':modules:core',
+        ':modules:generator',
+        ':modules:templates'
 
-rootProject.name = 'Root'
-//rootProject.buildFileName = 'build.gradle.kts'
+rootProject.name = 'LWJGL3'
