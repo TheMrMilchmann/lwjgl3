@@ -17,12 +17,16 @@ import org.gradle.internal.os.*
 import org.gradle.process.*
 import java.io.*
 
-internal val JNI_HEADERS = when (Jvm.current().javaVersion) {
-    JavaVersion.VERSION_1_9 -> File(Jvm.current().javaHome, "include")
-    else                    -> File(Jvm.current().javaHome, "include")
+internal val JNI_HEADERS = when  {
+    JavaVersion.current() >= JavaVersion.VERSION_1_9    -> File(Jvm.current().javaHome, "include")
+    else                                                -> File(Jvm.current().javaHome.parentFile, "include")
 }
 
-internal interface CompileNativesSpec: PatternFilterable {
+interface CompileNativesSpec: PatternFilterable {
+
+    var dest: File?
+    val flags: MutableList<String>
+
 
     val project: Project
 
@@ -113,7 +117,7 @@ internal interface CompileNativesSpec: PatternFilterable {
 
 }
 
-internal interface BuildNativesSpec: CompileNativesSpec {
+interface BuildNativesSpec: CompileNativesSpec {
 
 }
 
@@ -125,13 +129,20 @@ fun buildNatives() =
         else                                -> throw IllegalStateException("Native compilation for ${org.gradle.internal.os.OperatingSystem.current()} not available.")
     }
 
-abstract class BuildNatives: SourceTask() {
+abstract class BuildNatives<out SpecType: BuildNativesSpec>(
+    specInit: (Project) -> SpecType
+): SourceTask() {
+
+    @get:Input
+    val spec = specInit.invoke(project)
+    fun spec(action: SpecType.() -> Unit) = apply { action.invoke(spec) }
 
     @TaskAction
     fun buildNatives() {
         val res = run()
 
         res.rethrowFailure()
+        res.assertNormalExitValue()
     }
 
     fun updateDependency(name: String, artifact: String) {
@@ -148,11 +159,17 @@ abstract class BuildNatives: SourceTask() {
 
 fun Project.lwjglRegisterNativeTasks(umbrella: Task, commonInit: Task.() -> Unit) {
     Bindings.values()
-        .filter { isActive(it) && it.withNative() }
+        .filter { isActive(it) && it.hasNatives() }
         .forEach {
-            val compileNativeBinding = tasks.create("compileNative-${it.id}", buildNatives().java)
+            val compileNativeBinding = tasks.create("compileNative-${it.id}", buildNatives().java).apply {
+                spec {
+                    name = if (it === Bindings.CORE) "lwjgl" else "lwjgl_${it.id}"
+                    dest = File(buildDir, "bin/native/windows/x64/${if (it === Bindings.CORE) "core" else it.id}")
+                }
+            }
+
             commonInit.invoke(compileNativeBinding)
-            it.compileNativeConfiguration()!!.invoke(compileNativeBinding)
+            it.getNativeBuildConfig()!!.invoke(compileNativeBinding)
 
             umbrella.dependsOn(compileNativeBinding)
         }

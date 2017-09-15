@@ -7,6 +7,7 @@ package build
 import build.native.*
 import buildArch
 import org.gradle.api.*
+import org.gradle.internal.os.*
 import java.io.*
 
 enum class Bindings(
@@ -35,12 +36,20 @@ enum class Bindings(
 
         },
         compileNativeWindows = {
-            libName = "lwjgl"
-
             source = project.fileTree(File(project.projectDir, "src/main/c")) + project.fileTree(File(project.projectDir, "src/generated/c"))
-            dest = File(project.buildDir, "bin/native/windows/x64/core")
 
-            compilerArgs = listOf("/I${File(project.projectDir, "src/main/c")}\\system\\dyncall")
+            spec {
+                compilerArgs("/I${File(project.projectDir, "src/main/c")}\\system\\dyncall")
+
+                beforeLink { // TODO might want to make this a task dep
+                    updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
+                    updateDependency("dyncallback", "${project.buildArch}/dyncallback_s.lib")
+                    updateDependency("dynload", "${project.buildArch}/dynload_s.lib")
+                }
+
+                link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
+                    .map { it.absolutePath }
+            }
 
             include("/system/*.c")
             exclude("/system/lwjgl_malloc.c")
@@ -50,19 +59,6 @@ enum class Bindings(
             include("/system/jni/*.c")
             include("/system/libc/*.c")
             include("/system/windows/*.c")
-
-            beforeLink = {
-                updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
-                updateDependency("dyncallback", "${project.buildArch}/dyncallback_s.lib")
-                updateDependency("dynload", "${project.buildArch}/dynload_s.lib")
-            }
-
-            File(project.rootDir, "lib/windows/x64").listFiles().forEach {
-                println("$it --- " + it.name.matches("dyn(.*)\\.lib".toRegex()))
-            }
-
-            link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
-                .map { it.absolutePath }
         }
     ),
     ASSIMP(
@@ -109,30 +105,29 @@ enum class Bindings(
         "LWJGL - A compact, fast, powerful, and robust database that implements a simplified variant of the BerkeleyDB (BDB) API.",
         "org.lwjgl.util.lmdb",
         compileNativeWindows = {
-            libName = "lwjgl_lmdb"
-
             source = project.fileTree(project.projectDir)
             //source = project.fileTree(File(project.projectDir, "src/main/c")) + project.fileTree(File(project.projectDir, "src/generated/c"))
-            dest = File(project.buildDir, "bin/native/windows/x64/lmdb")
 
-            val inheritDest = dest
+            val inheritDest = spec.dest
 
-            beforeCompile = {
-                compileNativesWindows {
-                    dest = inheritDest
+            spec {
+                beforeCompile {
+                    compileNativesWindows {
+                        dest = inheritDest
 
-                    setSource(project.fileTree(File(project.projectDir, "src/main/c"))  + project.fileTree(File(project.projectDir, "src/generated/c")))
-                    flags = "/W0 /I${File(project.projectDir, "src/main/c")}\\util\\lmdb"
+                        setSource(project.fileTree(File(project.projectDir, "src/main/c"))  + project.fileTree(File(project.projectDir, "src/generated/c")))
+                        flags = mutableListOf(*"/W0 /I${File(project.projectDir, "src/main/c")}\\util\\lmdb".split(" ").toTypedArray())
 
-                    include("/util/lmdb/*.c")
+                        include("/util/lmdb/*.c")
+                    }
                 }
+
+                compilerArgs("/I${File(project.projectDir, "src/main/c")}\\util\\lmdb")
+
+                linkArgs("ntdll.lib", "Advapi32.lib")
             }
 
-            compilerArgs = listOf("/I${File(project.projectDir, "src/main/c")}\\util\\lmdb")
-
             include("/src/generated/c/util/lmdb/*.c")
-
-            linkArgs = listOf("ntdll.lib", "Advapi32.lib")
         }
     ),
     NANOVG(
@@ -265,3 +260,12 @@ enum class Bindings(
 }
 
 fun Project.isActive(binding: Bindings) = binding.isActive.invoke(rootProject, binding)
+
+fun Bindings.hasNatives() = getNativeBuildConfig() != null
+
+fun Bindings.getNativeBuildConfig() = when {
+    OperatingSystem.current().isLinux   -> compileNativeLinux
+    OperatingSystem.current().isMacOsX  -> compileNativeMacOSX
+    OperatingSystem.current().isWindows -> compileNativeWindows
+    else                                -> throw IllegalStateException("Native compilation for ${org.gradle.internal.os.OperatingSystem.current()} not available.")
+}
