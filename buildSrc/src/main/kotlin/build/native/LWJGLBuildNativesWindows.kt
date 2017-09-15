@@ -56,7 +56,7 @@ open class BuildNativesWindows: BuildNatives<BuildNativesWindowsSpec>({ BuildNat
 private fun Project.buildNatives(spec: BuildNativesWindowsSpec): ExecResult {
     spec.beforeCompile?.invoke(this)
 
-    val compileRes = compileNatives(spec)
+    val compileRes = compileNatives(spec.apply { flags.addAll(compilerArgs) })
     compileRes.rethrowFailure()
     compileRes.assertNormalExitValue()
 
@@ -89,7 +89,7 @@ private fun Project.compileNatives(spec: CompileNativesWindowsSpec) = exec {
     args("/c")
     args(spec.flags)
     args("/EHsc", "/Ox", "/GF", "/Gy", "/GL", "/GR-", "/GS-", "/MT", "/MP", "/nologo", "/DNDEBUG", "/DLWJGL_WINDOWS", "/DLWJGL_$buildArch")
-    args("/Fo${spec.dest}")
+    args("/Fo${spec.dest}/")
 
     args("/I$JNI_HEADERS", "/I$JNI_HEADERS/win32")
     args("/I${File(project.projectDir, "src/main/c")}/system")

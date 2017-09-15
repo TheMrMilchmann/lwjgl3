@@ -18,9 +18,9 @@ enum class Bindings(
     val artifact: String = "lwjgl-$id",
     val platforms: Array<Platforms> = Platforms.ALL,
     internal val isActive: Project.(b: Bindings) -> Boolean = { hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
-    internal val compileNativeLinux: (BuildNativesWindows.() -> Unit)? = null,
-    internal val compileNativeMacOSX: (BuildNativesWindows.() -> Unit)? = null,
-    internal val compileNativeWindows: (BuildNativesWindows.() -> Unit)? = null
+    internal val buildLinuxConfig: (BuildNativesWindows.() -> Unit)? = null,
+    internal val buildMacOSXConfig: (BuildNativesWindows.() -> Unit)? = null,
+    internal val buildWindowsConfig: (BuildNativesWindows.() -> Unit)? = null
 ) {
     CORE(
         "lwjgl",
@@ -29,17 +29,24 @@ enum class Bindings(
         null,
         artifact = "lwjgl",
         isActive = { true },
-        compileNativeLinux = {
+        buildLinuxConfig = {
 
         },
-        compileNativeMacOSX = {
+        buildMacOSXConfig = {
 
         },
-        compileNativeWindows = {
-            source = project.fileTree(File(project.projectDir, "src/main/c")) + project.fileTree(File(project.projectDir, "src/generated/c"))
-
+        buildWindowsConfig = {
             spec {
-                compilerArgs("/I${File(project.projectDir, "src/main/c")}\\system\\dyncall")
+                compilerArgs("/I${File(project.projectDir, "src/main/c")}/system/dyncall")
+
+                include("$srcNative/system/*.c")
+                exclude("$srcNative/system/lwjgl_malloc.c")
+                include("$srcGenNative/system/*.c")
+                include("$srcGenNative/system/dyncall/*.c")
+                if (project.isActive(Bindings.JAWT)) include("$srcGenNative/system/jawt/*.c")
+                include("$srcGenNative/system/jni/*.c")
+                include("$srcGenNative/system/libc/*.c")
+                include("$srcGenNative/system/windows/*.c")
 
                 beforeLink { // TODO might want to make this a task dep
                     updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
@@ -50,15 +57,6 @@ enum class Bindings(
                 link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
                     .map { it.absolutePath }
             }
-
-            include("/system/*.c")
-            exclude("/system/lwjgl_malloc.c")
-            include("/system/*.c")
-            include("/system/dyncall/*.c")
-            if (project.isActive(Bindings.JAWT)) include("/system/jawt/*.c")
-            include("/system/jni/*.c")
-            include("/system/libc/*.c")
-            include("/system/windows/*.c")
         }
     ),
     ASSIMP(
@@ -104,30 +102,25 @@ enum class Bindings(
         "LWJGL - LMDB bindings",
         "LWJGL - A compact, fast, powerful, and robust database that implements a simplified variant of the BerkeleyDB (BDB) API.",
         "org.lwjgl.util.lmdb",
-        compileNativeWindows = {
-            source = project.fileTree(project.projectDir)
-            //source = project.fileTree(File(project.projectDir, "src/main/c")) + project.fileTree(File(project.projectDir, "src/generated/c"))
-
-            val inheritDest = spec.dest
-
+        buildWindowsConfig = {
             spec {
                 beforeCompile {
                     compileNativesWindows {
-                        dest = inheritDest
+                        dest = this@spec.dest
 
-                        setSource(project.fileTree(File(project.projectDir, "src/main/c"))  + project.fileTree(File(project.projectDir, "src/generated/c")))
+                        setSource(project.fileTree(project.projectDir))
                         flags = mutableListOf(*"/W0 /I${File(project.projectDir, "src/main/c")}\\util\\lmdb".split(" ").toTypedArray())
 
                         include("/util/lmdb/*.c")
                     }
                 }
 
+                include("$srcGenNative/util/lmdb/*.c")
+
                 compilerArgs("/I${File(project.projectDir, "src/main/c")}\\util\\lmdb")
 
                 linkArgs("ntdll.lib", "Advapi32.lib")
             }
-
-            include("/src/generated/c/util/lmdb/*.c")
         }
     ),
     NANOVG(
@@ -266,6 +259,6 @@ fun Bindings.hasNatives() = getNativeBuildConfig() != null
 fun Bindings.getNativeBuildConfig() = when {
     OperatingSystem.current().isLinux   -> compileNativeLinux
     OperatingSystem.current().isMacOsX  -> compileNativeMacOSX
-    OperatingSystem.current().isWindows -> compileNativeWindows
+    OperatingSystem.current().isWindows -> buildWindowsConfig
     else                                -> throw IllegalStateException("Native compilation for ${org.gradle.internal.os.OperatingSystem.current()} not available.")
 }

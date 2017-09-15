@@ -19,19 +19,34 @@ import java.io.*
 
 internal val JNI_HEADERS = when  {
     JavaVersion.current() >= JavaVersion.VERSION_1_9    -> File(Jvm.current().javaHome, "include")
-    else                                                -> File(Jvm.current().javaHome.parentFile, "include")
+    else                                                -> File(Jvm.current().javaHome, "include")
 }
 
 interface CompileNativesSpec: PatternFilterable {
 
+    val project: Project
+
+    val srcNative get() = "src/main/c"
+    val srcGenNative get() = "src/generated/c"
+
+
+    @get:OutputDirectory
     var dest: File?
+
+
     val flags: MutableList<String>
 
 
-    val project: Project
 
     val source: MutableList<Any>
     val patternSet: PatternSet
+
+
+
+
+
+
+
 
     fun getSource(): FileTree {
         val copy = ArrayList<Any>(source)
@@ -131,9 +146,9 @@ fun buildNatives() =
 
 abstract class BuildNatives<out SpecType: BuildNativesSpec>(
     specInit: (Project) -> SpecType
-): SourceTask() {
+): DefaultTask() {
 
-    @get:Input
+    @get:Nested
     val spec = specInit.invoke(project)
     fun spec(action: SpecType.() -> Unit) = apply { action.invoke(spec) }
 
@@ -165,12 +180,13 @@ fun Project.lwjglRegisterNativeTasks(umbrella: Task, commonInit: Task.() -> Unit
                 spec {
                     name = if (it === Bindings.CORE) "lwjgl" else "lwjgl_${it.id}"
                     dest = File(buildDir, "bin/native/windows/x64/${if (it === Bindings.CORE) "core" else it.id}")
+
+                    source(project.fileTree(project.projectDir))
                 }
             }
 
             commonInit.invoke(compileNativeBinding)
             it.getNativeBuildConfig()!!.invoke(compileNativeBinding)
-
             umbrella.dependsOn(compileNativeBinding)
         }
 }
