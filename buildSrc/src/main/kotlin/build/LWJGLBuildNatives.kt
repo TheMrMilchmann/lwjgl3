@@ -154,22 +154,24 @@ abstract class BuildNatives<out SpecType: BuildNativesSpec>(
 
     @TaskAction
     fun buildNatives() {
+        project.mkdir(spec.dest)
+
         val res = run()
 
         res.rethrowFailure()
         res.assertNormalExitValue()
     }
 
-    fun updateDependency(name: String, artifact: String) {
-        val action = DownloadAction(project)
-        action.src("https://build.lwjgl.org/nightly/windows/$artifact")
-        action.dest(File(project.rootDir, "lib/windows/$artifact"))
-
-        action.execute()
-    }
-
     abstract fun run(): ExecResult
 
+}
+
+fun Project.updateDependency(name: String, artifact: String) {
+    val action = DownloadAction(project)
+    action.src("https://build.lwjgl.org/nightly/windows/$artifact")
+    action.dest(File(project.rootDir, "lib/windows/$artifact"))
+
+    action.execute()
 }
 
 fun Project.lwjglRegisterNativeTasks(umbrella: Task, commonInit: Task.() -> Unit) {
@@ -186,7 +188,7 @@ fun Project.lwjglRegisterNativeTasks(umbrella: Task, commonInit: Task.() -> Unit
             }
 
             commonInit.invoke(compileNativeBinding)
-            it.getNativeBuildConfig()!!.invoke(compileNativeBinding)
+            it.getNativeBuildConfig()!!.invoke(compileNativeBinding.spec)
             umbrella.dependsOn(compileNativeBinding)
         }
 }

@@ -20,18 +20,20 @@ open class CompileNativesWindowsSpec(
     override val project: Project,
     var name: String = "",
     override var dest: File? = null,
+    var compilerArgs: MutableList<String> = mutableListOf(),
     override var flags: MutableList<String> = mutableListOf()
 ): CompileNativesSpec {
 
     override val source = mutableListOf<Any>()
     override val patternSet = PatternSet()
 
+    fun compilerArgs(vararg args: String) = apply { compilerArgs.addAll(args) }
+
 }
 
 class BuildNativesWindowsSpec(
     project: Project,
     var beforeCompile: (Project.() -> Unit)? = null,
-    var compilerArgs: MutableList<String> = mutableListOf(),
     var beforeLink: (Project.() -> Unit)? = null,
     var link: Iterable<String>? = null,
     var linkArgs: MutableList<String> = mutableListOf()
@@ -41,7 +43,6 @@ class BuildNativesWindowsSpec(
 ), BuildNativesSpec {
 
     fun beforeCompile(action: Project.() -> Unit) { beforeCompile = action }
-    fun compilerArgs(vararg args: String) = apply { compilerArgs.addAll(args) }
     fun beforeLink(action: Project.() -> Unit) { beforeLink = action }
     fun linkArgs(vararg args: String) = apply { linkArgs.addAll(args) }
 
@@ -74,9 +75,11 @@ private fun Project.buildNatives(spec: BuildNativesWindowsSpec): ExecResult {
     return exec {
         executable = "cl"
 
+        val buildDir = mkdir(File(spec.dest, "build"))
+
         args("/LD", "/WX", "/nologo")
-        args("/Fe:\"${spec.dest}/build/${spec.name}$LIB_POSTFIX.dll\"")
-        args(spec.link)
+        args("/Fe:\"$buildDir/${spec.name}$LIB_POSTFIX.dll\"")
+        if (spec.link != null) args(spec.link)
         args(*spec.dest!!.listFiles { file: File -> file.name.endsWith(".obj") })
         args("/link", "/OPT:REF,ICF", "/DLL", "/LTCG")
         args(spec.linkArgs)
@@ -88,6 +91,7 @@ private fun Project.compileNatives(spec: CompileNativesWindowsSpec) = exec {
 
     args("/c")
     args(spec.flags)
+    args(spec.compilerArgs)
     args("/EHsc", "/Ox", "/GF", "/Gy", "/GL", "/GR-", "/GS-", "/MT", "/MP", "/nologo", "/DNDEBUG", "/DLWJGL_WINDOWS", "/DLWJGL_$buildArch")
     args("/Fo${spec.dest}/")
 

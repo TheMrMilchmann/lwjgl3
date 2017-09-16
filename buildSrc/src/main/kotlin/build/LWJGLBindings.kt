@@ -18,9 +18,9 @@ enum class Bindings(
     val artifact: String = "lwjgl-$id",
     val platforms: Array<Platforms> = Platforms.ALL,
     internal val isActive: Project.(b: Bindings) -> Boolean = { hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
-    internal val buildLinuxConfig: (BuildNativesWindows.() -> Unit)? = null,
-    internal val buildMacOSXConfig: (BuildNativesWindows.() -> Unit)? = null,
-    internal val buildWindowsConfig: (BuildNativesWindows.() -> Unit)? = null
+    internal val buildLinuxConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
+    internal val buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
+    internal val buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)? = null
 ) {
     CORE(
         "lwjgl",
@@ -36,27 +36,25 @@ enum class Bindings(
 
         },
         buildWindowsConfig = {
-            spec {
-                compilerArgs("/I${File(project.projectDir, "src/main/c")}/system/dyncall")
+            compilerArgs("/I${File(project.projectDir, "src/main/c")}/system/dyncall")
 
-                include("$srcNative/system/*.c")
-                exclude("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/system/*.c")
-                include("$srcGenNative/system/dyncall/*.c")
-                if (project.isActive(Bindings.JAWT)) include("$srcGenNative/system/jawt/*.c")
-                include("$srcGenNative/system/jni/*.c")
-                include("$srcGenNative/system/libc/*.c")
-                include("$srcGenNative/system/windows/*.c")
+            include("$srcNative/system/*.c")
+            exclude("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/system/*.c")
+            include("$srcGenNative/system/dyncall/*.c")
+            if (project.isActive(Bindings.JAWT)) include("$srcGenNative/system/jawt/*.c")
+            include("$srcGenNative/system/jni/*.c")
+            include("$srcGenNative/system/libc/*.c")
+            include("$srcGenNative/system/windows/*.c")
 
-                beforeLink { // TODO might want to make this a task dep
-                    updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
-                    updateDependency("dyncallback", "${project.buildArch}/dyncallback_s.lib")
-                    updateDependency("dynload", "${project.buildArch}/dynload_s.lib")
-                }
-
-                link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
-                    .map { it.absolutePath }
+            beforeLink { // TODO might want to make this a task dep
+                updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
+                updateDependency("dyncallback", "${project.buildArch}/dyncallback_s.lib")
+                updateDependency("dynload", "${project.buildArch}/dynload_s.lib")
             }
+
+            link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
+                .map { it.absolutePath }
         }
     ),
     ASSIMP(
@@ -103,43 +101,79 @@ enum class Bindings(
         "LWJGL - A compact, fast, powerful, and robust database that implements a simplified variant of the BerkeleyDB (BDB) API.",
         "org.lwjgl.util.lmdb",
         buildWindowsConfig = {
-            spec {
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = this@spec.dest
+            val inheritDest = dest
 
-                        setSource(project.fileTree(project.projectDir))
-                        flags = mutableListOf(*"/W0 /I${File(project.projectDir, "src/main/c")}\\util\\lmdb".split(" ").toTypedArray())
+            beforeCompile {
+                compileNativesWindows {
+                    dest = inheritDest
+                    flags = mutableListOf(*"/W0 /I${File(project.projectDir, "src/main/c")}/util/lmdb".split(" ").toTypedArray())
 
-                        include("/util/lmdb/*.c")
-                    }
+                    setSource(project.fileTree(project.projectDir))
+                    include("$srcNative/util/lmdb/*.c")
                 }
-
-                include("$srcGenNative/util/lmdb/*.c")
-
-                compilerArgs("/I${File(project.projectDir, "src/main/c")}\\util\\lmdb")
-
-                linkArgs("ntdll.lib", "Advapi32.lib")
             }
+
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/lmdb")
+
+            include("$srcGenNative/util/lmdb/*.c")
+
+            linkArgs("ntdll.lib", "Advapi32.lib")
         }
     ),
     NANOVG(
         "nanovg",
         "LWJGL - NanoVG bindings",
         "A small antialiased vector graphics rendering library for OpenGL.",
-        "org.lwjgl.nanovg"
+        "org.lwjgl.nanovg",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/nanovg")
+            compilerArgs("/I${File(project.projectDir, srcNative)}/stb")
+
+            include("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/nanovg/*.c")
+        }
     ),
     NFD(
         "nfd",
         "LWJGL - Native File Dialog bindings",
         "A tiny, neat C library that portably invokes native file open and save dialogs.",
-        "org.lwjgl.util.nfd"
+        "org.lwjgl.util.nfd",
+        buildWindowsConfig = {
+            val inheritDest = dest
+
+            beforeCompile {
+                compileNativesWindows {
+                    dest = inheritDest
+                    flags = mutableListOf()
+
+                    compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd")
+                    compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd/include")
+
+                    setSource(project.fileTree(project.projectDir))
+                    include("$srcNative/util/nfd/nfd_common.c")
+                    include("$srcNative/util/nfd/nfd_win.cpp")
+                }
+            }
+
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd")
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd/include")
+
+            include("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/util/nfd/*.c")
+
+            linkArgs("Ole32.lib", "Shell32.lib")
+        }
     ),
     NUKLEAR(
         "nuklear",
         "LWJGL - Nuklear bindings",
         "A minimal state immediate mode graphical user interface toolkit.",
-        "org.lwjgl.nuklear"
+        "org.lwjgl.nuklear",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/nuklear")
+
+            include("$srcGenNative/nuklear/*.c")
+        }
     ),
     OPENAL(
         "openal",
@@ -158,62 +192,138 @@ enum class Bindings(
         "opengl",
         "LWJGL - OpenGL bindings",
         "The most widely adopted 2D and 3D graphics API in the industry, bringing thousands of applications to a wide variety of computer platforms.",
-        "org.lwjgl.opengl"
+        "org.lwjgl.opengl",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/opengl")
+
+            include("$srcGenNative/opengl/*.c")
+        }
     ),
     OPENGLES(
         "opengles",
         "LWJGL - OpenGL ES bindings",
         "A royalty-free, cross-platform API for full-function 2D and 3D graphics on embedded systems - including consoles, phones, appliances and vehicles.",
-        "org.lwjgl.opengles"
+        "org.lwjgl.opengles",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/opengles")
+
+            include("$srcGenNative/opengles/*.c")
+        }
     ),
     OPENVR(
         "openvr",
         "LWJGL - OpenVR bindings",
         "OpenVR is an API and runtime that allows access to VR hardware from multiple vendors without requiring that applications have specific knowledge of the hardware they are targeting.",
-        "org.lwjgl.openvr"
+        "org.lwjgl.openvr",
+        buildWindowsConfig = {
+            include("$srcGenNative/openvr/*.c")
+        }
     ),
     OVR(
         "ovr",
         "LWJGL - OVR bindings",
         "The API of the Oculus SDK.",
         "org.lwjgl.ovr",
-        platforms = arrayOf(Platforms.WINDOWS)
+        platforms = arrayOf(Platforms.WINDOWS),
+        buildWindowsConfig = {
+            // TODO impl
+        }
     ),
     PAR(
         "par",
         "LWJGL - par_shapes bindings",
         "Generate parametric surfaces and other simple shapes.",
-        "org.lwjgl.util.par"
+        "org.lwjgl.util.par",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/par")
+
+            include("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/util/par/*.c")
+        }
     ),
     RPMALLOC(
         "rpmalloc",
         "LWJGL - rpmalloc bindings",
         "A public domain cross platform lock free thread caching 16-byte aligned memory allocator implemented in C.",
-        "org.lwjgl.system.rpmalloc"
+        "org.lwjgl.system.rpmalloc",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/system/rpmalloc")
+
+            include("$srcGenNative/system/rpmalloc/*.c")
+        }
     ),
     SSE(
         "sse",
         "LWJGL - SSE bindings",
         "Simple SSE intrinsics.",
-        "org.lwjgl.util.simd"
+        "org.lwjgl.util.simd",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util")
+
+            include("$srcGenNative/util/simd/*.c")
+        }
     ),
     STB(
         "stb",
         "LWJGL - stb bindings",
         "Single-file public domain libraries for fonts, images, ogg vorbis files and more.",
-        "org.lwjgl.stb"
+        "org.lwjgl.stb",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/stb")
+
+            include("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/stb/*.c")
+        }
     ),
     TINYEXR(
         "tinyexr",
         "LWJGL - Tiny OpenEXR bindings",
         "A small library to load and save OpenEXR(.exr) images.",
-        "org.lwjgl.util.tinyexr"
+        "org.lwjgl.util.tinyexr",
+        buildWindowsConfig = {
+            val inheritDest = dest
+
+            beforeCompile {
+                compileNativesWindows {
+                    dest = inheritDest
+
+                    compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyexr")
+
+                    setSource(project.fileTree(project.projectDir))
+                    include("$srcNative/util/tinyexr/*.cc")
+                }
+            }
+
+            compilerArgs("/I$srcNative/util/tinyexr")
+
+            include("$srcGenNative/util/tinyexr/*.c")
+        }
     ),
     TINYFD(
         "tinyfd",
         "LWJGL - Tiny File Dialogs bindings",
         "Provides basic modal dialogs.",
-        "org.lwjgl.util.tinyfd"
+        "org.lwjgl.util.tinyfd",
+        buildWindowsConfig = {
+            val inheritDest = dest
+
+            beforeCompile {
+                compileNativesWindows {
+                    dest = inheritDest
+
+                    compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyfd")
+
+                    setSource(project.fileTree(project.projectDir))
+                    include("$srcNative/util/tinyfd/*.c")
+                }
+            }
+
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyfd")
+
+            include("$srcGenNative/util/tinyfd/*.c")
+
+            linkArgs("Comdlg32.lib", "Ole32.lib", "Shell32.lib", "User32.lib")
+        }
     ),
     VULKAN(
         "vulkan",
@@ -226,13 +336,38 @@ enum class Bindings(
         "xxhash",
         "LWJGL - xxHash bindings",
         "An Extremely fast Hash algorithm, running at RAM speed limits.",
-        "org.lwjgl.util.xxhash"
+        "org.lwjgl.util.xxhash",
+        buildWindowsConfig = {
+            compilerArgs("/I${File(project.projectDir, srcNative)}/system")
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/xxhash")
+
+            include("$srcNative/system/lwjgl_malloc.c")
+            include("$srcGenNative/util/xxhash/*.c")
+        }
     ),
     YOGA(
         "yoga",
         "LWJGL - Yoga bindings",
         "An open-source, cross-platform layout library that implements Flexbox.",
-        "org.lwjgl.util.yoga"
+        "org.lwjgl.util.yoga",
+        buildWindowsConfig = {
+            val inheritDest = dest
+
+            beforeCompile {
+                compileNativesWindows {
+                    dest = inheritDest
+
+                    compilerArgs("/I${File(project.projectDir, srcNative)}/util/yoga")
+
+                    setSource(project.fileTree(project.projectDir))
+                    include("$srcNative/util/yoga/*.c")
+                }
+            }
+
+            compilerArgs("/I${File(project.projectDir, srcNative)}/util/yoga")
+
+            include("$srcGenNative/util/yoga/*.c")
+        }
     );
 
     fun artifactNotation(classifier: String? = null) =
@@ -257,8 +392,8 @@ fun Project.isActive(binding: Bindings) = binding.isActive.invoke(rootProject, b
 fun Bindings.hasNatives() = getNativeBuildConfig() != null
 
 fun Bindings.getNativeBuildConfig() = when {
-    OperatingSystem.current().isLinux   -> compileNativeLinux
-    OperatingSystem.current().isMacOsX  -> compileNativeMacOSX
+    OperatingSystem.current().isLinux   -> buildLinuxConfig
+    OperatingSystem.current().isMacOsX  -> buildMacOSXConfig
     OperatingSystem.current().isWindows -> buildWindowsConfig
-    else                                -> throw IllegalStateException("Native compilation for ${org.gradle.internal.os.OperatingSystem.current()} not available.")
+    else                                -> throw IllegalStateException("Native compilation for ${OperatingSystem.current()} not available.")
 }
