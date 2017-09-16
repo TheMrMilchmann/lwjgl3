@@ -5,6 +5,14 @@
 import org.gradle.api.*
 import org.gradle.kotlin.dsl.*
 
+// LWJGL version
+const val lwjglVersion = "3.1.3"
+
+// Build dependencies
+const val kotlinVersion = "1.1.4"
+const val testNGVersion = "6.11"
+const val jcommanderVersion = "1.72"
+
 fun Project.loadBuildProperties() {
     require(parent === null) { "Build properties must be loaded from root project." }
 
