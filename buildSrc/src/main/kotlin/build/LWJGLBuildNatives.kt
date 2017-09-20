@@ -174,14 +174,15 @@ fun Project.updateDependency(name: String, artifact: String) {
     action.execute()
 }
 
-fun Project.lwjglRegisterNativeTasks(umbrella: Task, commonInit: Task.() -> Unit) {
-    Bindings.values()
-        .filter { isActive(it) && it.hasNatives() }
+fun Project.lwjglRegisterNativeTasks(umbrella: Task, bindings: List<Binding>, commonInit: Task.() -> Unit) {
+    bindings.filter { isActive(it) && it.hasNatives() }
         .forEach {
             val compileNativeBinding = tasks.create("compileNative-${it.id}", buildNatives().java).apply {
                 spec {
-                    name = if (it === Bindings.CORE) "lwjgl" else "lwjgl_${it.id}"
-                    dest = File(buildDir, "bin/native/windows/x64/${if (it === Bindings.CORE) "core" else it.id}")
+                    val isCore = it.id == "lwjgl"
+
+                    name = if (isCore) it.id else "lwjgl_${it.id}"
+                    dest = File(buildDir, "bin/native/windows/x64/${if (isCore) "core" else it.id}")
 
                     source(project.fileTree(project.projectDir))
                 }

@@ -6,4 +6,4 @@ include ':modules:core',
         ':modules:generator',
         ':modules:templates'
 
-rootProject.name = 'LWJGL3'
+rootProject.name = 'Root'

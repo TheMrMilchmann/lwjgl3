@@ -2,7 +2,9 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
+import build.*
 import org.gradle.api.*
+import org.gradle.internal.os.*
 import org.gradle.kotlin.dsl.*
 
 // LWJGL version
@@ -15,6 +17,13 @@ const val jcommanderVersion = "1.72"
 
 fun Project.loadBuildProperties() {
     require(parent === null) { "Build properties must be loaded from root project." }
+
+    extra["build.platform"] = when {
+        OperatingSystem.current().isLinux -> Platforms.LINUX
+        OperatingSystem.current().isMacOsX -> Platforms.MACOS
+        OperatingSystem.current().isWindows -> Platforms.WINDOWS
+        else -> throw RuntimeException("Unsupported OS")
+    }
 
     extra["build.type"] = when {
         "build.type" in properties -> properties["build.type"] as String
@@ -38,6 +47,8 @@ fun Project.loadBuildProperties() {
         else -> System.getenv().getOrDefault("LWJGL_BUILD_OFFLINE", "false")
     }.toBoolean()
 }
+
+val Project.buildPlatform get() = rootProject.extra["build.platform"] as Platforms
 
 /**
  * This is used as the source of binary dependencies. Valid values:

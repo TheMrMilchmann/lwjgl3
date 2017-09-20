@@ -102,4 +102,4 @@ private fun Project.compileNatives(spec: CompileNativesWindowsSpec) = exec {
     args(spec.getSource())
 }
 
-internal fun Project.compileNativesWindows(init: CompileNativesWindowsSpec.() -> Unit) = compileNatives(CompileNativesWindowsSpec(this).apply(init))
+fun Project.compileNativesWindows(init: CompileNativesWindowsSpec.() -> Unit) = compileNatives(CompileNativesWindowsSpec(this).apply(init))
