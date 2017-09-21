@@ -2,11 +2,10 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-import build.*
-import build.native.*
-import org.gradle.api.tasks.bundling.*
 import org.gradle.internal.jvm.*
 import org.gradle.kotlin.dsl.*
+import org.lwjgl.build.*
+import org.lwjgl.build.natives.*
 
 project.group = "org.lwjgl"
 project.version = lwjglVersion
@@ -28,7 +27,7 @@ class Bindings {
             artifact: String = "lwjgl-$id",
             platforms: Array<Platforms> = Platforms.ALL,
             isActive: Project.(b: Binding) -> Boolean = { this.hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
-            buildLinuxConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
+            buildLinuxConfig: (BuildNativesLinuxSpec.() -> Unit)? = null,
             buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
             buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)? = null
         ) = Binding(id, title, projectDescription, packageName, artifact, platforms, isActive, buildLinuxConfig, buildMacOSXConfig, buildWindowsConfig)
@@ -526,7 +525,7 @@ project(":modules:core") {
 
     val deployment = when {
         hasProperty("release") -> Deployment(
-            BuildType.RELEASE,
+            LWJGLBuildType.RELEASE,
             "https://oss.sonatype.org/service/local/staging/deploy/maven2/",
             "sonatypeUsername", // TODO
             "sonatypePassword" // TODO
@@ -535,17 +534,17 @@ project(":modules:core") {
             project.version = "${project.version}-SNAPSHOT"
 
             Deployment(
-                BuildType.SNAPSHOT,
+                LWJGLBuildType.SNAPSHOT,
                 "https://oss.sonatype.org/content/repositories/snapshots/",
                 "sonatypeUsername", // TODO
                 "sonatypePassword" // TODO
             )
         }
-        else -> Deployment(BuildType.LOCAL, repositories.mavenLocal().url.toString())
+        else -> Deployment(LWJGLBuildType.LOCAL, repositories.mavenLocal().url.toString())
     }
 
     configure<SigningExtension> {
-        isRequired = deployment.type === BuildType.RELEASE
+        isRequired = deployment.type === LWJGLBuildType.RELEASE
         sign(configurations["archives"])
     }
 
@@ -696,7 +695,7 @@ project(":modules:core") {
 
                 from(jar.source)
                 include("/${it.packageName!!.replace('.', '/')}/*")
-             }
+            }
 
             val bindingJavadoc = javadocTask("${it.id}-javadoc") {
                 include("/${it.packageName!!.replace('.', '/')}/*")
@@ -718,13 +717,11 @@ project(":modules:core") {
                 from(java.sourceSets["main"].allSource)
                 include("/${it.packageName!!.replace('.', '/')}/*")
             }
+
+            val compileNative = compileNativeTask("${it.id}-compileNative", it) {
+                dependsOn(project(":modules:templates").tasks["generate"])
+            }
         }
-    }
-
-    val compileNative = tasks.create("compileNative")
-
-    lwjglRegisterNativeTasks(compileNative, Bindings.values) {
-        dependsOn(project(":modules:templates").tasks["generate"])
     }
 
 }
@@ -797,7 +794,21 @@ fun NamedDomainObjectContainerScope<Task>.javadocTask(name: String, conf: Javado
         */
     }.also(conf)
 
-fun NamedDomainObjectContainerScope<Task>.uploadNative(name: String, conf: Task.() -> Unit) =
+fun NamedDomainObjectContainerScope<Task>.compileNativeTask(name: String, binding: Binding, conf: BuildNatives<*>.() -> Unit) =
+    name(buildPlatform.taskClass) {
+        spec {
+            val isCore = binding === Bindings.CORE
+
+            this.name = if (isCore) binding.id else "lwjgl_${binding.id}" // TODO Refers to the wrong `name` without `this`. Kotlin Compiler bug?
+            dest = File(buildDir, "bin/native/windows/x64/${if (isCore) "core" else binding.id}")
+
+            source(project.fileTree(project.projectDir))
+        }
+    }.also {
+        buildPlatform.invoke(it.spec, binding)
+    }.also(conf)
+
+fun NamedDomainObjectContainerScope<Task>.uploadNativeTask(name: String, conf: Task.() -> Unit) =
     name {
         doFirst {
             if (!(("AWS_ACCESS_KEY_ID" in System.getenv() && "AWS_SECRET_ACCESS_KEY" in System.getenv()) || "AWS_CONFIG_FILE" in System.getenv()))

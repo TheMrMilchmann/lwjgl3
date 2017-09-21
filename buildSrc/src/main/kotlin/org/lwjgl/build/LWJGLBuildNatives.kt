@@ -2,9 +2,9 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-package build
+package org.lwjgl.build
 
-import build.native.*
+import buildPlatform
 import de.undercouch.gradle.tasks.download.*
 import groovy.lang.*
 import org.gradle.api.*
@@ -13,7 +13,6 @@ import org.gradle.api.specs.*
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.util.*
 import org.gradle.internal.jvm.*
-import org.gradle.internal.os.*
 import org.gradle.process.*
 import java.io.*
 
@@ -28,6 +27,8 @@ interface CompileNativesSpec: PatternFilterable {
 
     val srcNative get() = "src/main/c"
     val srcGenNative get() = "src/generated/c"
+
+    var name: String
 
 
     @get:OutputDirectory
@@ -136,14 +137,6 @@ interface BuildNativesSpec: CompileNativesSpec {
 
 }
 
-fun buildNatives() =
-    when {
-        //org.gradle.internal.os.OperatingSystem.current().isLinux   -> compileNativeLinux
-        //org.gradle.internal.os.OperatingSystem.current().isMacOsX  -> compileNativeMacOSX
-        OperatingSystem.current().isWindows -> BuildNativesWindows::class
-        else                                -> throw IllegalStateException("Native compilation for ${org.gradle.internal.os.OperatingSystem.current()} not available.")
-    }
-
 abstract class BuildNatives<out SpecType: BuildNativesSpec>(
     specInit: (Project) -> SpecType
 ): DefaultTask() {
@@ -177,7 +170,7 @@ fun Project.updateDependency(name: String, artifact: String) {
 fun Project.lwjglRegisterNativeTasks(umbrella: Task, bindings: List<Binding>, commonInit: Task.() -> Unit) {
     bindings.filter { isActive(it) && it.hasNatives() }
         .forEach {
-            val compileNativeBinding = tasks.create("compileNative-${it.id}", buildNatives().java).apply {
+            val compileNativeBinding = tasks.create("compileNative-${it.id}", buildPlatform.taskClass.java).apply {
                 spec {
                     val isCore = it.id == "lwjgl"
 
@@ -189,7 +182,7 @@ fun Project.lwjglRegisterNativeTasks(umbrella: Task, bindings: List<Binding>, co
             }
 
             commonInit.invoke(compileNativeBinding)
-            it.getNativeBuildConfig()!!.invoke(compileNativeBinding.spec)
+            buildPlatform.invoke(compileNativeBinding.spec, it)
             umbrella.dependsOn(compileNativeBinding)
         }
 }

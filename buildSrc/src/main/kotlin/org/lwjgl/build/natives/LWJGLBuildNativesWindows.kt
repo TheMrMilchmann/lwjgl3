@@ -2,13 +2,13 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-package build.native
+package org.lwjgl.build.natives
 
-import build.*
 import buildArch
 import org.gradle.api.*
 import org.gradle.api.tasks.util.*
 import org.gradle.process.*
+import org.lwjgl.build.*
 import java.io.*
 
 private val Project.LIB_POSTFIX get() = when (buildArch) {
@@ -18,7 +18,7 @@ private val Project.LIB_POSTFIX get() = when (buildArch) {
 
 open class CompileNativesWindowsSpec(
     override val project: Project,
-    var name: String = "",
+    override var name: String = "",
     override var dest: File? = null,
     var compilerArgs: MutableList<String> = mutableListOf(),
     override var flags: MutableList<String> = mutableListOf()
@@ -95,7 +95,7 @@ private fun Project.compileNatives(spec: CompileNativesWindowsSpec) = exec {
     args("/EHsc", "/Ox", "/GF", "/Gy", "/GL", "/GR-", "/GS-", "/MT", "/MP", "/nologo", "/DNDEBUG", "/DLWJGL_WINDOWS", "/DLWJGL_$buildArch")
     args("/Fo${spec.dest}/")
 
-    args("/I$JNI_HEADERS", "/I$JNI_HEADERS/win32")
+    args("/I${JNI_HEADERS}", "/I${JNI_HEADERS}/win32")
     args("/I${File(project.projectDir, "src/main/c")}/system")
     args("/I${File(project.projectDir, "src/main/c")}/system/windows")
 

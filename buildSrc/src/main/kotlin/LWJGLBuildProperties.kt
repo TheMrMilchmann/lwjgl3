@@ -2,10 +2,10 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-import build.*
 import org.gradle.api.*
 import org.gradle.internal.os.*
 import org.gradle.kotlin.dsl.*
+import org.lwjgl.build.*
 
 // LWJGL version
 const val lwjglVersion = "3.1.3"

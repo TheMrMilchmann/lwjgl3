@@ -2,5 +2,5 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-package build.native
+package org.lwjgl.build.natives
 

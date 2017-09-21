@@ -2,13 +2,14 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-package build.native
+package org.lwjgl.build.natives
 
-import build.*
 import buildArch
 import org.gradle.api.*
 import org.gradle.api.tasks.util.*
 import org.gradle.process.*
+import org.lwjgl.build.*
+import org.lwjgl.build.natives.*
 import java.io.*
 
 private val Project.LIB_POSTFIX get() = when (buildArch) {
@@ -18,7 +19,7 @@ private val Project.LIB_POSTFIX get() = when (buildArch) {
 
 open class CompileNativeLinuxSpec(
     override val project: Project,
-    var name: String = "",
+    override var name: String = "",
     override var dest: File? = null,
     override var flags: MutableList<String> = mutableListOf()
 ): CompileNativesSpec {
