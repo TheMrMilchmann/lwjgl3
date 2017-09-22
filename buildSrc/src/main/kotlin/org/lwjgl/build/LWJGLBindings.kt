@@ -5,6 +5,7 @@
 package org.lwjgl.build
 
 import org.gradle.api.*
+import org.gradle.api.tasks.util.*
 import org.gradle.internal.os.*
 import org.lwjgl.build.natives.*
 import java.io.*
@@ -15,11 +16,12 @@ data class Binding(
     val projectDescription: String,
     val packageName: String?,
     val artifact: String = "lwjgl-$id",
-    val platforms: Array<Platforms> = Platforms.ALL,
-    internal val isActive: Project.(b: Binding) -> Boolean = { hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
-    internal val buildLinuxConfig: (BuildNativesLinuxSpec.() -> Unit)? = null,
-    internal val buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)? = null, // TODO
-    internal val buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)? = null
+    val platforms: Array<Platforms>,
+    val sourceConfig: PatternFilterable.() -> Unit,
+    internal val isActive: Project.(b: Binding) -> Boolean,
+    internal val buildLinuxConfig: (BuildNativesLinuxSpec.() -> Unit)?,
+    internal val buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)?, // TODO
+    internal val buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)?
 ) {
     fun artifactNotation(classifier: String? = null) =
         if (classifier == null) {

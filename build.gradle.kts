@@ -26,11 +26,12 @@ class Bindings {
             packageName: String?,
             artifact: String = "lwjgl-$id",
             platforms: Array<Platforms> = Platforms.ALL,
+            sourceConfig: PatternFilterable.() -> Unit = { include("/${packageName!!.replace('.', '/')}/*") },
             isActive: Project.(b: Binding) -> Boolean = { this.hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
             buildLinuxConfig: (BuildNativesLinuxSpec.() -> Unit)? = null,
             buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
             buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)? = null
-        ) = Binding(id, title, projectDescription, packageName, artifact, platforms, isActive, buildLinuxConfig, buildMacOSXConfig, buildWindowsConfig)
+        ) = Binding(id, title, projectDescription, packageName, artifact, platforms, sourceConfig, isActive, buildLinuxConfig, buildMacOSXConfig, buildWindowsConfig)
             .apply { values.add(this) }
 
         val CORE = binding(
@@ -40,6 +41,14 @@ class Bindings {
             null,
             artifact = "lwjgl",
             isActive = { true },
+            sourceConfig = {
+                include("org/lwjgl/*.java")
+                include("org/lwjgl/system/**")
+
+                exclude("org/lwjgl/system/jawt/**")
+                exclude("org/lwjgl/system/jemalloc/**")
+                exclude("org/lwjgl/system/rpmalloc/**")
+            },
             buildLinuxConfig = {
 
             },
@@ -661,65 +670,72 @@ project(":modules:core") {
         }
 
         val jar: Jar by tasks.getting
-        jar.apply {
-            baseName = "lwjgl"
+        jar.enabled = false
 
+        val javadoc: Javadoc by tasks.getting
+        javadoc.enabled = false
 
-        }
+        val javadocJar by tasks.creating
+        val sourcesJar by tasks.creating
+        val compileNative by tasks.creating
 
-        val javadoc = javadocTask("javadoc") {
+        Bindings.values.map { (if (it === Bindings.CORE) "lwjgl" else it.id) to it }.forEach {
+            val id = it.first
+            val binding = it.second
 
-        }
-
-        "javadocJar"(Jar::class) {
-            destinationDir = jar.destinationDir
-            baseName = jar.baseName
-            classifier = "javadoc"
-
-            from(javadoc.outputs)
-        }
-
-        "sourcesJar"(Jar::class) {
-            destinationDir = jar.destinationDir
-            baseName = jar.baseName
-            classifier = "sources"
-
-            from(java.sourceSets["main"].allSource)
-            // TODO includes
-        }
-
-        Bindings.values.filter { it !== Bindings.CORE }.forEach {
-            val bindingJar = jarTask("${it.id}-jar", it) {
+            val bindingJar = jarTask("$id-jar", binding) {
                 destinationDir = jar.destinationDir
-                baseName = "lwjgl-${it.id}"
+                baseName = if (binding === Bindings.CORE) id else "lwjgl-$id"
 
                 from(jar.source)
-                include("/${it.packageName!!.replace('.', '/')}/*")
+                binding.sourceConfig.invoke(this)
+
+                onlyIf { isActive(binding) }
+                jar.dependsOn(this)
             }
 
-            val bindingJavadoc = javadocTask("${it.id}-javadoc") {
-                include("/${it.packageName!!.replace('.', '/')}/*")
+            val bindingJavadoc = javadocTask("$id-javadoc") {
+                binding.sourceConfig.invoke(this)
+
+                onlyIf { isActive(binding) }
+                javadoc.dependsOn(this)
             }
 
-            "${it.id}-javadocJar"(Jar::class) {
+            "$id-javadocJar"(Jar::class) {
                 destinationDir = jar.destinationDir
                 baseName = bindingJar.baseName
                 classifier = "javadoc"
 
                 from(bindingJavadoc.outputs)
+                binding.sourceConfig.invoke(this)
+
+                onlyIf { isActive(binding) }
+                javadocJar.dependsOn(this)
             }
 
-            "${it.id}-sourcesJar"(Jar::class) {
+            "$id-sourcesJar"(Jar::class) {
                 destinationDir = jar.destinationDir
                 baseName = bindingJar.baseName
                 classifier = "sources"
 
                 from(java.sourceSets["main"].allSource)
-                include("/${it.packageName!!.replace('.', '/')}/*")
+                binding.sourceConfig.invoke(this)
+
+                onlyIf { isActive(binding) }
+                sourcesJar.dependsOn(this)
             }
 
-            val compileNative = compileNativeTask("${it.id}-compileNative", it) {
-                dependsOn(project(":modules:templates").tasks["generate"])
+            if (binding.hasNatives()) {
+                compileNativeTask("$id-compileNative", binding) {
+                    dependsOn(project(":modules:templates").tasks["generate"])
+
+                    onlyIf { isActive(binding) }
+                    compileNative.dependsOn(this)
+
+                    doFirst {
+                        spec.source.forEach { println(it) }
+                    }
+                }
             }
         }
     }

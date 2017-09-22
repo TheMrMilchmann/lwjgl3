@@ -95,7 +95,7 @@ private fun Project.compileNatives(spec: CompileNativesWindowsSpec) = exec {
     args("/EHsc", "/Ox", "/GF", "/Gy", "/GL", "/GR-", "/GS-", "/MT", "/MP", "/nologo", "/DNDEBUG", "/DLWJGL_WINDOWS", "/DLWJGL_$buildArch")
     args("/Fo${spec.dest}/")
 
-    args("/I${JNI_HEADERS}", "/I${JNI_HEADERS}/win32")
+    args("/I$JNI_HEADERS", "/I$JNI_HEADERS/win32")
     args("/I${File(project.projectDir, "src/main/c")}/system")
     args("/I${File(project.projectDir, "src/main/c")}/system/windows")
 
