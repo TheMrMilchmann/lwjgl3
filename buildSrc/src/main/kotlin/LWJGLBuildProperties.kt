@@ -8,10 +8,10 @@ import org.gradle.kotlin.dsl.*
 import org.lwjgl.build.*
 
 // LWJGL version
-const val lwjglVersion = "3.1.3"
+const val lwjglVersion = "3.1.4"
 
 // Build dependencies
-const val kotlinVersion = "1.1.4"
+const val kotlinVersion = "1.1.51"
 const val testNGVersion = "6.11"
 const val jcommanderVersion = "1.72"
 
