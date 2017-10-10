@@ -20,7 +20,7 @@ project.version = lwjglVersion
 
 loadBuildProperties()
 
-val isJDK9OrNewer = JavaVersion.current() != null && JavaVersion.current() >= JavaVersion.VERSION_1_9
+val isJDK9OrNewer = JavaVersion.current() >= JavaVersion.VERSION_1_9
 
 allprojects {
     evaluationDependsOnChildren()
