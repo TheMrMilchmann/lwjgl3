@@ -3,7 +3,7 @@
  * License terms: https://www.lwjgl.org/license
  */
 plugins {
-    kotlin("jvm", kotlinVersion)
+    kotlin("jvm")
 }
 
 dependencies {

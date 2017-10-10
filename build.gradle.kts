@@ -7,6 +7,14 @@ import org.gradle.kotlin.dsl.*
 import org.lwjgl.build.*
 import org.lwjgl.build.natives.*
 
+plugins {
+    kotlin("jvm") version kotlinVersion apply false
+}
+
+apply {
+    //from("config/bindings.gradle.kts")
+}
+
 project.group = "org.lwjgl"
 project.version = lwjglVersion
 
@@ -429,7 +437,7 @@ allprojects {
 val pGenerator: Project = project(":modules:generator") {
     dependencies {
         "compile"(kotlin("stdlib-jre8", kotlinVersion))
-        println(Jvm.current().javaHome.resolve("lib/tools.jar"))
+        // println(Jvm.current().javaHome.resolve("lib/tools.jar")) TODO verify tools location accross different JVMs
         if (!isJDK9OrNewer) "compile"(files(Jvm.current().javaHome.resolve("lib/tools.jar")))
     }
 }
@@ -725,7 +733,7 @@ project(":modules:core") {
                 sourcesJar.dependsOn(this)
             }
 
-            if (binding.hasNatives()) {
+            if (binding.hasNatives()) {/*
                 compileNativeTask("$id-compileNative", binding) {
                     dependsOn(project(":modules:templates").tasks["generate"])
 
@@ -733,9 +741,9 @@ project(":modules:core") {
                     compileNative.dependsOn(this)
 
                     doFirst {
-                        spec.source.forEach { println(it) }
+                        //spec.source.forEach { println(it) }
                     }
-                }
+                }*/
             }
         }
     }

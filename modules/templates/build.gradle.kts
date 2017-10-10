@@ -5,7 +5,7 @@
 import org.gradle.kotlin.dsl.*
 
 plugins {
-    kotlin("jvm", kotlinVersion)
+    kotlin("jvm")
 }
 
 dependencies {
