@@ -23,6 +23,9 @@ data class Binding(
     internal val buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)?, // TODO
     internal val buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)?
 ) {
+
+    val isCore = id == "lwjgl"
+
     fun artifactNotation(classifier: String? = null) =
         if (classifier == null) {
             mapOf(
@@ -38,6 +41,7 @@ data class Binding(
                 "classifier" to classifier
             )
         }
+
 }
 
 fun Project.isActive(binding: Binding) = binding.isActive.invoke(rootProject, binding)

@@ -12,7 +12,7 @@ plugins {
 }
 
 apply {
-    //from("config/bindings.gradle.kts")
+    from("config/bindings.gradle.kts")
 }
 
 project.group = "org.lwjgl"
@@ -21,410 +21,6 @@ project.version = lwjglVersion
 loadBuildProperties()
 
 val isJDK9OrNewer = JavaVersion.current() != null && JavaVersion.current() >= JavaVersion.VERSION_1_9
-
-class Bindings {
-
-    companion object {
-        val values = mutableListOf<Binding>()
-
-        private fun binding(
-            id: String,
-            title: String,
-            projectDescription: String,
-            packageName: String?,
-            artifact: String = "lwjgl-$id",
-            platforms: Array<Platforms> = Platforms.ALL,
-            sourceConfig: PatternFilterable.() -> Unit = { include("/${packageName!!.replace('.', '/')}/*") },
-            isActive: Project.(b: Binding) -> Boolean = { this.hasProperty("binding.${it.id}") && properties["binding.${it.id}"].toString().toBoolean() },
-            buildLinuxConfig: (BuildNativesLinuxSpec.() -> Unit)? = null,
-            buildMacOSXConfig: (BuildNativesWindowsSpec.() -> Unit)? = null,
-            buildWindowsConfig: (BuildNativesWindowsSpec.() -> Unit)? = null
-        ) = Binding(id, title, projectDescription, packageName, artifact, platforms, sourceConfig, isActive, buildLinuxConfig, buildMacOSXConfig, buildWindowsConfig)
-            .apply { values.add(this) }
-
-        val CORE = binding(
-            "lwjgl",
-            "LWJGL",
-            "The LWJGL core library.",
-            null,
-            artifact = "lwjgl",
-            isActive = { true },
-            sourceConfig = {
-                include("org/lwjgl/*.java")
-                include("org/lwjgl/system/**")
-
-                exclude("org/lwjgl/system/jawt/**")
-                exclude("org/lwjgl/system/jemalloc/**")
-                exclude("org/lwjgl/system/rpmalloc/**")
-            },
-            buildLinuxConfig = {
-
-            },
-            buildMacOSXConfig = {
-
-            },
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, "src/main/c")}/system/dyncall")
-
-                include("$srcNative/system/*.c")
-                exclude("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/system/*.c")
-                include("$srcGenNative/system/dyncall/*.c")
-                if (project.isActive(Bindings.JAWT)) include("$srcGenNative/system/jawt/*.c")
-                include("$srcGenNative/system/jni/*.c")
-                include("$srcGenNative/system/libc/*.c")
-                include("$srcGenNative/system/windows/*.c")
-
-                beforeLink { // TODO might want to make this a task dep
-                    updateDependency("dyncall", "${project.buildArch}/dyncall_s.lib")
-                    updateDependency("dyncallback", "${project.buildArch}/dyncallback_s.lib")
-                    updateDependency("dynload", "${project.buildArch}/dynload_s.lib")
-                }
-
-                link = File(project.rootDir, "lib/windows/x64").listFiles { file -> file.name.matches("dyn(.*)\\.lib".toRegex()) }
-                    .map { it.absolutePath }
-            }
-        )
-
-        val ASSIMP = binding(
-            "assimp",
-            "Assimp",
-            "A portable Open Source library to import various well-known 3D model formats in a uniform manner.",
-            "org.lwjgl.assimp"
-        )
-
-        val BFX = binding(
-            "bgfx",
-            "bgfx",
-            "A cross-platform, graphics API agnostic rendering library. It provides a high performance, low level abstraction for common platform graphics APIs like OpenGL, Direct3D and Apple Metal.",
-            "org.lwjgl.bgfx"
-        )
-
-        val EGL = binding(
-            "egl",
-            "EGL",
-            "An interface between Khronos rendering APIs such as OpenGL ES or OpenVG and the underlying native platform window system.",
-            "org.lwjgl.egl",
-            platforms = Platforms.JAVA_ONLY
-        )
-
-        val GLFW = binding(
-            "glfw",
-            "GLFW",
-            "An multi-platform library for OpenGL, OpenGL ES and Vulkan development on the desktop. It provides a simple API for creating windows, contexts and surfaces, receiving input and events.",
-            "org.lwjgl.glfw"
-        )
-
-        val JAWT = binding(
-            "jawt",
-            "JAWT",
-            "The AWT native interface.",
-            "org.lwjgl.system.jawt",
-            platforms = Platforms.JAVA_ONLY
-        )
-
-        val JEMALLOC = binding(
-            "jemalloc",
-            "Jemalloc",
-            "A general purpose malloc implementation that emphasizes fragmentation avoidance and scalable concurrency support.",
-            "org.lwjgl.system.jemalloc"
-        )
-
-        val LMDB = binding(
-            "lmdb",
-            "LMDB",
-            "LWJGL - A compact, fast, powerful, and robust database that implements a simplified variant of the BerkeleyDB (BDB) API.",
-            "org.lwjgl.util.lmdb",
-            buildWindowsConfig = {
-                val inheritDest = dest
-
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = inheritDest
-                        flags = mutableListOf(*"/W0 /I${File(project.projectDir, "src/main/c")}/util/lmdb".split(" ").toTypedArray())
-
-                        setSource(project.fileTree(project.projectDir))
-                        include("$srcNative/util/lmdb/*.c")
-                    }
-                }
-
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/lmdb")
-
-                include("$srcGenNative/util/lmdb/*.c")
-
-                linkArgs("ntdll.lib", "Advapi32.lib")
-            }
-        )
-
-        val NANOVG = binding(
-            "nanovg",
-            "NanoVG",
-            "A small antialiased vector graphics rendering library for OpenGL.",
-            "org.lwjgl.nanovg",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/nanovg")
-                compilerArgs("/I${File(project.projectDir, srcNative)}/stb")
-
-                include("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/nanovg/*.c")
-            }
-        )
-
-        val NFD = binding(
-            "nfd",
-            "Native File Dialog",
-            "A tiny, neat C library that portably invokes native file open and save dialogs.",
-            "org.lwjgl.util.nfd",
-            buildWindowsConfig = {
-                val inheritDest = dest
-
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = inheritDest
-                        flags = mutableListOf()
-
-                        compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd")
-                        compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd/include")
-
-                        setSource(project.fileTree(project.projectDir))
-                        include("$srcNative/util/nfd/nfd_common.c")
-                        include("$srcNative/util/nfd/nfd_win.cpp")
-                    }
-                }
-
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd")
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/nfd/include")
-
-                include("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/util/nfd/*.c")
-
-                linkArgs("Ole32.lib", "Shell32.lib")
-            }
-        )
-
-        val NUKLEAR = binding(
-            "nuklear",
-            "Nuklear",
-            "A minimal state immediate mode graphical user interface toolkit.",
-            "org.lwjgl.nuklear",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/nuklear")
-
-                include("$srcGenNative/nuklear/*.c")
-            }
-        )
-
-        val OPENAL = binding(
-            "openal",
-            "OpenAL",
-            "A cross-platform 3D audio API appropriate for use with gaming applications and many other types of audio applications.",
-            "org.lwjgl.openal"
-        )
-
-        val OPENCL = binding(
-            "opencl",
-            "OpenCL",
-            "An open, royalty-free standard for cross-platform, parallel programming of diverse processors found in personal computers, servers, mobile devices and embedded platforms.",
-            "org.lwjgl.opencl",
-            platforms = Platforms.JAVA_ONLY
-        )
-
-        val OPENGL = binding(
-            "opengl",
-            "OpenGL",
-            "The most widely adopted 2D and 3D graphics API in the industry, bringing thousands of applications to a wide variety of computer platforms.",
-            "org.lwjgl.opengl",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/opengl")
-
-                include("$srcGenNative/opengl/*.c")
-            }
-        )
-
-        val OPENGLES = binding(
-            "opengles",
-            "OpenGL ES",
-            "A royalty-free, cross-platform API for full-function 2D and 3D graphics on embedded systems - including consoles, phones, appliances and vehicles.",
-            "org.lwjgl.opengles",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/opengles")
-
-                include("$srcGenNative/opengles/*.c")
-            }
-        )
-
-        val OPENVR = binding(
-            "openvr",
-            "OpenVR",
-            "OpenVR is an API and runtime that allows access to VR hardware from multiple vendors without requiring that applications have specific knowledge of the hardware they are targeting.",
-            "org.lwjgl.openvr",
-            buildWindowsConfig = {
-                include("$srcGenNative/openvr/*.c")
-            }
-        )
-
-        val OVR = binding(
-            "ovr",
-            "LibOVR",
-            "The API of the Oculus SDK.",
-            "org.lwjgl.ovr",
-            platforms = arrayOf(Platforms.WINDOWS),
-            buildWindowsConfig = {
-                // TODO impl
-            }
-        )
-
-        val PAR = binding(
-            "par",
-            "par",
-            "Generate parametric surfaces and other simple shapes.",
-            "org.lwjgl.util.par",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/par")
-
-                include("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/util/par/*.c")
-            }
-        )
-
-        val RPMALLOC = binding(
-            "rpmalloc",
-            "rpmalloc",
-            "A public domain cross platform lock free thread caching 16-byte aligned memory allocator implemented in C.",
-            "org.lwjgl.system.rpmalloc",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/system/rpmalloc")
-
-                include("$srcGenNative/system/rpmalloc/*.c")
-            }
-        )
-
-        val SSE = binding(
-            "sse",
-            "SSE",
-            "Simple SSE intrinsics.",
-            "org.lwjgl.util.simd",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util")
-
-                include("$srcGenNative/util/simd/*.c")
-            }
-        )
-
-        val STB = binding(
-            "stb",
-            "stb",
-            "Single-file public domain libraries for fonts, images, ogg vorbis files and more.",
-            "org.lwjgl.stb",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/stb")
-
-                include("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/stb/*.c")
-            }
-        )
-
-        val TINYEXR = binding(
-            "tinyexr",
-            "Tiny OpenEXR",
-            "A small library to load and save OpenEXR(.exr) images.",
-            "org.lwjgl.util.tinyexr",
-            buildWindowsConfig = {
-                val inheritDest = dest
-
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = inheritDest
-
-                        compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyexr")
-
-                        setSource(project.fileTree(project.projectDir))
-                        include("$srcNative/util/tinyexr/*.cc")
-                    }
-                }
-
-                compilerArgs("/I$srcNative/util/tinyexr")
-
-                include("$srcGenNative/util/tinyexr/*.c")
-            }
-        )
-
-        val TINYFD = binding(
-            "tinyfd",
-            "Tiny File Dialogs",
-            "Provides basic modal dialogs.",
-            "org.lwjgl.util.tinyfd",
-            buildWindowsConfig = {
-                val inheritDest = dest
-
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = inheritDest
-
-                        compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyfd")
-
-                        setSource(project.fileTree(project.projectDir))
-                        include("$srcNative/util/tinyfd/*.c")
-                    }
-                }
-
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/tinyfd")
-
-                include("$srcGenNative/util/tinyfd/*.c")
-
-                linkArgs("Comdlg32.lib", "Ole32.lib", "Shell32.lib", "User32.lib")
-            }
-        )
-
-        val VULKAN = binding(
-            "vulkan",
-            "Vulkan",
-            "A new generation graphics and compute API that provides high-efficiency, cross-platform access to modern GPUs used in a wide variety of devices from PCs and consoles to mobile phones and embedded platforms.",
-            "org.lwjgl.vulkan",
-            platforms = Platforms.JAVA_ONLY
-        )
-
-        val XXHASH = binding(
-            "xxhash",
-            "xxHash",
-            "An Extremely fast Hash algorithm, running at RAM speed limits.",
-            "org.lwjgl.util.xxhash",
-            buildWindowsConfig = {
-                compilerArgs("/I${File(project.projectDir, srcNative)}/system")
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/xxhash")
-
-                include("$srcNative/system/lwjgl_malloc.c")
-                include("$srcGenNative/util/xxhash/*.c")
-            }
-        )
-
-        val YOGA = binding(
-            "yoga",
-            "yoga",
-            "An open-source, cross-platform layout library that implements Flexbox.",
-            "org.lwjgl.util.yoga",
-            buildWindowsConfig = {
-                val inheritDest = dest
-
-                beforeCompile {
-                    compileNativesWindows {
-                        dest = inheritDest
-
-                        compilerArgs("/I${File(project.projectDir, srcNative)}/util/yoga")
-
-                        setSource(project.fileTree(project.projectDir))
-                        include("$srcNative/util/yoga/*.c")
-                    }
-                }
-
-                compilerArgs("/I${File(project.projectDir, srcNative)}/util/yoga")
-
-                include("$srcGenNative/util/yoga/*.c")
-            }
-        )
-    }
-
-}
 
 allprojects {
     evaluationDependsOnChildren()
@@ -445,7 +41,7 @@ val pGenerator: Project = project(":modules:generator") {
 project(":modules:templates") {
     tasks {
         "compileKotlin"(SourceTask::class) {
-            Bindings.values.filter { !isActive(it) }
+            bindings.filter { !isActive(it) }
                 .forEach { exclude("${it.packageName!!.replace('.', '/')}/**") }
         }
 
@@ -459,7 +55,7 @@ project(":modules:templates") {
 
             jvmArgs("-server")
             if (hasProperty("binding.DISABLE_CHECKS")) jvmArgs("-Dbinding.DISABLE_CHECKS=${properties["binding.DISABLE_CHECKS"]}")
-            jvmArgs(Bindings.values.filter { isActive(it) }.map { "-Dbinding.${it.id}=true" })
+            jvmArgs(bindings.filter { isActive(it) }.map { "-Dbinding.${it.id}=true" })
 
             workingDir = rootProject.projectDir
 
@@ -478,7 +74,7 @@ project(":modules:core") {
     val java = the<JavaPluginConvention>()
 
     fun SourceDirectorySet.excludeDisabled() = this.apply {
-        Bindings.values.filter { !isActive(it) }
+        bindings.filter { !isActive(it) }
             .forEach { exclude("${it.packageName!!.replace('.', '/')}/**") }
     }
 
@@ -488,7 +84,7 @@ project(":modules:core") {
     }
 
     java.sourceSets["test"].java.excludeDisabled().apply {
-        Bindings.values.filter { !isActive(it) }
+        bindings.filter { !isActive(it) }
             .forEach { exclude("org/lwjgl/demo/${it.packageName!!.removePrefix("org.lwjgl.").replace('.', '/')}/**") }
     }
 
@@ -526,7 +122,7 @@ project(":modules:core") {
         and a whole lot more verbose in Maven. Hopefully, the automation
         is going to alleviate the pain.
         */
-        Bindings.values.forEach {
+        bindings.forEach {
             val binding = it
 
             if (isActive(binding)) {
@@ -626,12 +222,12 @@ project(":modules:core") {
                             the<SigningExtension>().signPom(this)
                         }
 
-                        Bindings.values.forEach {
+                        bindings.forEach {
                             pom.project {
                                 withGroovyBuilder {
                                     "artifactId"(it.artifact)
 
-                                    "name"(if (it === Bindings.CORE) "The LWJGL core library." else "LWJGL - ${it.title} bindings")
+                                    "name"(if (it.isCore) "The LWJGL core library." else "LWJGL - ${it.title} bindings")
                                     "description"(it.projectDescription)
                                     "packaging"("jar")
                                     "url"("https://www.lwjgl.org")
@@ -659,7 +255,7 @@ project(":modules:core") {
                                         }
                                     }
 
-                                    if (it != Bindings.CORE) {
+                                    if (!it.isCore) {
                                         "dependencies" {
                                             "dependency" {
                                                 "groupId"("org.lwjgl")
@@ -687,13 +283,13 @@ project(":modules:core") {
         val sourcesJar by tasks.creating
         val compileNative by tasks.creating
 
-        Bindings.values.map { (if (it === Bindings.CORE) "lwjgl" else it.id) to it }.forEach {
+        bindings.map { (if (it.isCore) "lwjgl" else it.id) to it }.forEach {
             val id = it.first
             val binding = it.second
 
             val bindingJar = jarTask("$id-jar", binding) {
                 destinationDir = jar.destinationDir
-                baseName = if (binding === Bindings.CORE) id else "lwjgl-$id"
+                baseName = if (binding.isCore) id else "lwjgl-$id"
 
                 from(jar.source)
                 binding.sourceConfig.invoke(this)
@@ -821,10 +417,8 @@ fun NamedDomainObjectContainerScope<Task>.javadocTask(name: String, conf: Javado
 fun NamedDomainObjectContainerScope<Task>.compileNativeTask(name: String, binding: Binding, conf: BuildNatives<*>.() -> Unit) =
     name(buildPlatform.taskClass) {
         spec {
-            val isCore = binding === Bindings.CORE
-
-            this.name = if (isCore) binding.id else "lwjgl_${binding.id}" // TODO Refers to the wrong `name` without `this`. Kotlin Compiler bug?
-            dest = File(buildDir, "bin/native/windows/x64/${if (isCore) "core" else binding.id}")
+            this.name = if (binding.isCore) binding.id else "lwjgl_${binding.id}" // TODO Refers to the wrong `name` without `this`. Kotlin Compiler bug?
+            dest = File(buildDir, "bin/native/windows/x64/${if (binding.isCore) "core" else binding.id}")
 
             source(project.fileTree(project.projectDir))
         }

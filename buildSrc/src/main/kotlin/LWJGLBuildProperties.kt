@@ -88,3 +88,6 @@ val Project.buildArch get() = rootProject.extra["build.arch"] as String
  * are used (so they are not overriden). Set to one of true/on/yes to enable.
  */
 val Project.buildOffline get() = rootProject.extra["build.offline"] as Boolean
+
+@Suppress("UNCHECKED_CAST")
+val Project.bindings get() = rootProject.extra["bindings"] as List<Binding>
