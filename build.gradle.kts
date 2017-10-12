@@ -12,7 +12,7 @@ plugins {
 }
 
 apply {
-    from("config/bindings.gradle.kts")
+    from("config/build-bindings.gradle.kts")
 }
 
 project.group = "org.lwjgl"
@@ -329,17 +329,13 @@ project(":modules:core") {
                 sourcesJar.dependsOn(this)
             }
 
-            if (binding.hasNatives()) {/*
+            if (binding.hasNatives()) {
                 compileNativeTask("$id-compileNative", binding) {
                     dependsOn(project(":modules:templates").tasks["generate"])
 
                     onlyIf { isActive(binding) }
                     compileNative.dependsOn(this)
-
-                    doFirst {
-                        //spec.source.forEach { println(it) }
-                    }
-                }*/
+                }
             }
         }
     }

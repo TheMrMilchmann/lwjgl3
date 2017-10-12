@@ -268,6 +268,19 @@ binding(
 )
 
 binding(
+    "remotery",
+    "remotery",
+    "A realtime CPU/GPU profiler hosted in a single C file with a viewer that runs in a web browser.",
+    "org.lwjgl.util.remotery",
+    buildWindowsConfig = {
+        compilerArgs("/I${File(project.projectDir, srcNative)}/util/remotery")
+
+        include("$srcGenNative/util/remotery/*.c")
+        exclude("**/*Metal.c")
+    }
+)
+
+binding(
     "rpmalloc",
     "rpmalloc",
     "A public domain cross platform lock free thread caching 16-byte aligned memory allocator implemented in C.",
