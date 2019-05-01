@@ -230,7 +230,7 @@ internal fun parse(
                     CXCursor_UnionDecl       -> {
                         if (options.parseStructs) {
                             cursor.spelling.let { name ->
-                                cursor.parseStruct(context, name, false, handles).let {
+                                cursor.parseStruct(context, name, false, handles, mutableMapOf(name to false)).let {
                                     if (it != null) {
                                         structDeclarations[name] = it
                                         aggregateTypes[name] = it

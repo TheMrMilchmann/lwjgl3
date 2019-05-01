@@ -226,12 +226,14 @@ internal class Struct(
     private val typedef: Boolean,
     internal val documentation: String,
     internal val kind: String,
-    internal val members: String
+    internal val members: String,
+    private val forwardRef: Boolean = false
 ) {
     fun getDeclaration(context: ExtractionContext): String {
-        return """val $name = $kind(Module.${context.header.module}, "$name"${
-        if (typedef) "" else ", nativeName = \"struct $name\""
-        }) {
+        fun header(varName: String = name) =
+            """val $varName = $kind(Module.${context.header.module}, "$name"${if (typedef) "" else ", nativeName = \"struct $name\""})"""
+
+        return """${if (forwardRef) "${header("_$name")}\n" else ""}${header()} {
     documentation =${if (documentation.startsWith('\n')) "" else " "}$documentation
 
     $members
@@ -239,8 +241,14 @@ internal class Struct(
     }
 }
 
-internal fun CXCursor.parseStruct(context: ExtractionContext, name: String, typedef: Boolean, handles: ArrayList<String>) =
-    parseStructMembers(context, name, handles, t).let { members ->
+internal fun CXCursor.parseStruct(
+    context: ExtractionContext,
+    name: String,
+    typedef: Boolean,
+    handles: ArrayList<String>,
+    containingStructs: MutableMap<String, Boolean>
+) =
+    parseStructMembers(context, name, handles, t, containingStructs.also { it[name] = false }).let { members ->
         if (members.isEmpty()) {
             null
         } else {
@@ -249,12 +257,18 @@ internal fun CXCursor.parseStruct(context: ExtractionContext, name: String, type
                     .parse()
                     .doc
                     .formatDocumentation("${t}documentation = ", "$t$t", "\n$t$t")
-                Struct(name, typedef, doc, if (clang_getCursorKind(this) == CXCursor_UnionDecl) "union" else "struct", members)
+                Struct(name, typedef, doc, if (clang_getCursorKind(this) == CXCursor_UnionDecl) "union" else "struct", members, containingStructs.remove(name)!!)
             }
         }
     }
 
-private fun CXCursor.parseStructMembers(context: ExtractionContext, structName: String, handles: ArrayList<String>, indent: String): String {
+private fun CXCursor.parseStructMembers(
+    context: ExtractionContext,
+    structName: String,
+    handles: ArrayList<String>,
+    indent: String,
+    containingStructs: MutableMap<String, Boolean>
+): String {
     val attributes = ArrayList<String>()
     val members = ArrayList<String>()
 
@@ -279,7 +293,7 @@ private fun CXCursor.parseStructMembers(context: ExtractionContext, structName: 
                                     }
                                     structMember(members.removeAt(members.lastIndex), name, doc, indent)
                                 }
-                                else               -> structMember(type.lwjgl, name, doc, indent)
+                                else               -> structMember(type.lwjgl(containingStructs), name, doc, indent)
                             }
                         )
                         CXChildVisit_Continue
@@ -301,7 +315,7 @@ private fun CXCursor.parseStructMembers(context: ExtractionContext, structName: 
                         }
 
                         if (hasChildren) {
-                            members.add("$record {\n$indent$t${fieldDecl.parseStructMembers(context, structName, handles, "$indent$t")}\n$indent}")
+                            members.add("$record {\n$indent$t${fieldDecl.parseStructMembers(context, structName, handles, "$indent$t", containingStructs)}\n$indent}")
                         } else if (context.options.parseTypes) {
                             handles.add(
                                 parseSimpleType(
@@ -318,7 +332,7 @@ private fun CXCursor.parseStructMembers(context: ExtractionContext, structName: 
                             if (pointee.kind() == CXType_FunctionProto) {
                                 structMember(
                                     fieldDecl.anonymousFunctionProto(
-                                        stack, pointee, indent, context.header.module, name,
+                                        stack, pointee, indent, context.header.module, name, containingStructs,
                                         "Instances of this interface may be set to the {@code $name} field of the ##${if (structName.isNotEmpty()) structName else "FIXME"} struct."
                                     ),
                                     name,
@@ -326,21 +340,21 @@ private fun CXCursor.parseStructMembers(context: ExtractionContext, structName: 
                                     indent
                                 )
                             } else {
-                                structMember(type.lwjgl, name, doc, indent)
+                                structMember(type.lwjgl(containingStructs), name, doc, indent)
                             }
                         )
                     }
                     CXType_ConstantArray -> {
                         members.add(
                             structMember(
-                                clang_getElementType(type, CXType.mallocStack(stack)).lwjgl.arrayDimension(clang_getArraySize(type)),
+                                clang_getElementType(type, CXType.mallocStack(stack)).lwjgl(containingStructs).arrayDimension(clang_getArraySize(type)),
                                 name,
                                 doc,
                                 indent
                             )
                         )
                     }
-                    else                 -> members.add(structMember(type.lwjgl, name, doc, indent))
+                    else                 -> members.add(structMember(type.lwjgl(containingStructs), name, doc, indent))
                 }
                 Unit
             }
@@ -392,6 +406,7 @@ private fun CXCursor.anonymousFunctionProto(
     indent: String,
     module: String,
     name: String = "",
+    containingStructs: MutableMap<String, Boolean>,
     documentation: String = "Instances of this interface may be passed to the #FIXME() method."
 ): String {
     val args = ArrayList<CXCursor>(clang_getNumArgTypes(proto))
@@ -408,16 +423,16 @@ private fun CXCursor.anonymousFunctionProto(
     val docIndent = "$indent$t$t"
 
     return """Module.$module.callback {
-$indent    ${clang_getResultType(proto, CXType.mallocStack(stack)).lwjgl}(
+$indent    ${clang_getResultType(proto, CXType.mallocStack(stack)).lwjgl(containingStructs)}(
 $indent        /*FIXME:*/"$name",
-$indent        ${doc.format(docIndent)}${getFunctionArguments(module, proto, name, doc, docIndent, args)}${doc.formatReturnDoc()}
+$indent        ${doc.format(docIndent)}${getFunctionArguments(module, proto, name, doc, docIndent, args, containingStructs)}${doc.formatReturnDoc()}
 $indent    ) {
 $indent        documentation = "$documentation"
 $indent    }
 $indent}"""
 }
 
-internal fun CXCursor.parseCallback(header: Header, type: CXType, name: String): String = stackPush().use { stack ->
+internal fun CXCursor.parseCallback(header: Header, type: CXType, name: String, containingStructs: MutableMap<String, Boolean> = mutableMapOf()): String = stackPush().use { stack ->
     val args = ArrayList<CXCursor>(clang_getNumArgTypes(type))
     clang_visitChildren(this) { cursor, _ ->
         if (clang_getCursorKind(cursor) == CXCursor_ParmDecl) {
@@ -431,9 +446,9 @@ internal fun CXCursor.parseCallback(header: Header, type: CXType, name: String):
     val doc = clang_Cursor_getParsedComment(this, CXComment.mallocStack(stack)).parse()
 
     """val $name = Module.${header.module}.callback {
-    ${clang_getResultType(type, CXType.mallocStack(stack)).lwjgl}(
+    ${clang_getResultType(type, CXType.mallocStack(stack)).lwjgl(containingStructs)}(
         "$name",
-        ${doc.format("$t$t")}${getFunctionArguments(header.module, type, name, doc, "$t$t", args)},
+        ${doc.format("$t$t")}${getFunctionArguments(header.module, type, name, doc, "$t$t", args, containingStructs)},
 
         nativeType = "$name"${doc.formatReturnDoc()}
     ) {
@@ -475,7 +490,8 @@ private fun getFunctionArguments(
     functionName: String,
     doc: Documentation,
     indent: String,
-    args: ArrayList<CXCursor>
+    args: ArrayList<CXCursor>,
+    containingStructs: MutableMap<String, Boolean> = mutableMapOf()
 ) = if (args.isEmpty())
     ",\n\n${indent}void()"
 else
@@ -503,20 +519,20 @@ else
 
             val type = when (argType.kind()) {
                 CXType_ConstantArray -> {
-                    "Check(${clang_getArraySize(argType)})..${argType.lwjgl}"
+                    "Check(${clang_getArraySize(argType)})..${argType.lwjgl(containingStructs)}"
                 }
                 CXType_Pointer       -> {
                     val pointee = clang_getPointeeType(argType, CXType.mallocStack(frame))
                     if (pointee.kind() == CXType_FunctionProto) {
                         args[i].anonymousFunctionProto(
-                            frame, pointee, indent, module, functionName,
+                            frame, pointee, indent, module, functionName, containingStructs,
                             "Instances of this interface may be passed to the #$functionName() method."
                         )
                     } else {
-                        argType.lwjgl
+                        argType.lwjgl(containingStructs)
                     }
                 }
-                else                 -> argType.lwjgl
+                else                 -> argType.lwjgl(containingStructs)
             }
             formatFunctionArgument(type, argName, paramDoc, indent, i == args.lastIndex)
         }
@@ -582,8 +598,10 @@ internal fun CXCursor.parseMacro(
     }
 }
 
-private val CXType.lwjgl: String
-    get() = stackPush().use { stack ->
+private val CXType.lwjgl get() = lwjgl()
+
+private fun CXType.lwjgl(containingStructs: MutableMap<String, Boolean> = mutableMapOf()): String =
+    stackPush().use { stack ->
         when (val kind = kind()) {
             CXType_Void,
             CXType_Bool,
@@ -614,11 +632,17 @@ private val CXType.lwjgl: String
                 .replace("unsigned ", "unsigned_")
                 .replace("signed ", "")
                 .replace("long ", "long_")
-            CXType_Pointer         -> "${clang_getPointeeType(this, CXType.mallocStack(stack)).lwjgl}.p"
+            CXType_Pointer         -> "${clang_getPointeeType(this, CXType.mallocStack(stack)).lwjgl(containingStructs)}.p"
             //CXType_BlockPointer ->
             CXType_Record          -> {
                 this.spelling.let {
                     it.substring(it.indexOf(' ') + 1)
+                }.let {
+                    if (it in containingStructs) {
+                        containingStructs[it] = true
+                        "_$it"
+                    } else
+                        it
                 }
             }
             CXType_Enum            -> this.spelling.let {
@@ -631,14 +655,14 @@ private val CXType.lwjgl: String
             //CXType_FunctionNoProto ->
             //CXType_FunctionProto ->
             // TODO: curand.h - typedef unsigned int curandDirectionVectors32_t[32];
-            CXType_ConstantArray   -> clang_getElementType(this, CXType.mallocStack(stack)).lwjgl.arrayDimension(clang_getArraySize(this))
+            CXType_ConstantArray   -> clang_getElementType(this, CXType.mallocStack(stack)).lwjgl(containingStructs).arrayDimension(clang_getArraySize(this))
             //CXType_Vector ->
-            CXType_IncompleteArray -> "${clang_getElementType(this, CXType.mallocStack(stack)).lwjgl}.p"
+            CXType_IncompleteArray -> "${clang_getElementType(this, CXType.mallocStack(stack)).lwjgl(containingStructs)}.p"
             //CXType_VariableArray ->
             //CXType_DependentSizedArray ->
             //CXType_MemberPointer ->
             CXType_Elaborated      -> {
-                clang_Type_getNamedType(this, CXType.mallocStack(stack)).lwjgl
+                clang_Type_getNamedType(this, CXType.mallocStack(stack)).lwjgl(containingStructs)
             }
             else                   -> {
                 println(this.spelling)
