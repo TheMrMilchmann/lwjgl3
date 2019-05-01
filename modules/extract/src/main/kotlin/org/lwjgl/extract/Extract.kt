@@ -360,11 +360,7 @@ internal fun parse(
     }
 
     if (typedefs.isNotEmpty()) {
-        typedefs
-            .sorted()
-            .forEach {
-                output.println(it)
-            }
+        typedefs.forEach(output::println)
         output.println()
     }
 
