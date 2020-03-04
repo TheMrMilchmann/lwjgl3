@@ -5,3 +5,12 @@
 plugins {
     `lwjgl-core`
 }
+
+/*
+lwjgl {
+    artifact = "lwjgl"
+    projectName = "LWJGL"
+    projectDesc = "The LWJGL core library."
+    platforms = org.lwjgl.build.Platforms.ALL
+}
+ */

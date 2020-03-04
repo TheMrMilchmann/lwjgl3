@@ -6,7 +6,12 @@ import org.lwjgl.build.*
 
 plugins {
     kotlin("jvm")
+    `maven-publish`
+    signing
 }
+
+val lwjglVersion: String by project
+val deployment = Deployment(project)
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -30,6 +35,76 @@ val templatesJar = tasks.create<Jar>("templatesJar") {
 
 artifacts {
     add(templates.name, templatesJar)
+}
+
+tasks {
+    create<Jar>("sourcesJar") {
+        archiveBaseName.set((tasks["jar"] as Jar).archiveBaseName)
+        archiveClassifier.set("sources")
+        from(sourceSets["main"].allSource)
+    }
+    create<Jar>("javadocJar") {
+        dependsOn(javadoc)
+
+        archiveBaseName.set((tasks["jar"] as Jar).archiveBaseName)
+        archiveClassifier.set("javadoc")
+        from(javadoc.get().outputs)
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            url = uri(deployment.repo)
+
+            credentials {
+                username = deployment.user
+                password = deployment.password
+            }
+        }
+    }
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifact(tasks["sourcesJar"])
+            artifact(tasks["javadocJar"])
+
+            pom {
+                name.set(lwjglCore._projectName)
+                description.set(lwjglCore._projectDesc)
+                url.set("https://www.lwjgl.org")
+                packaging = "jar"
+
+                scm {
+                    connection.set("scm:git:https://github.com/LWJGL/lwjgl3.git")
+                    developerConnection.set("scm:git:https://github.com/LWJGL/lwjgl3.git")
+                    url.set("https://github.com/LWJGL/lwjgl3.git")
+                }
+
+                licenses {
+                    license {
+                        name.set("BSD")
+                        url.set("https://www.lwjgl.org/license")
+                        distribution.set("repo")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("spasi")
+                        name.set("Ioannis Tsakpinis")
+                        email.set("iotsakp@gmail.com")
+                        url.set("https://github.com/Spasi")
+                    }
+                }
+            }
+        }
+    }
+}
+
+signing {
+    isRequired = false // TODO
+    sign(publishing.publications)
 }
 
 dependencies {

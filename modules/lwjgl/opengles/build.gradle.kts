@@ -5,3 +5,9 @@
 plugins {
     `lwjgl-binding`
 }
+
+lwjgl {
+    dependencies {
+        compileOnly("egl")
+    }
+}
