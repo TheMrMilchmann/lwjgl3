@@ -43,6 +43,9 @@ tasks {
         archiveClassifier.set("sources")
         from(sourceSets["main"].allSource)
     }
+    javadoc {
+        isFailOnError = false
+    }
     create<Jar>("javadocJar") {
         dependsOn(javadoc)
 
