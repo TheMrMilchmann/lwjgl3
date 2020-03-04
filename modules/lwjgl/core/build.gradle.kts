@@ -2,8 +2,6 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
-allprojects {
-    repositories {
-        mavenCentral()
-    }
+plugins {
+    `lwjgl-core`
 }

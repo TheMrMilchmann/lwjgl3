@@ -1,0 +1,16 @@
+/*
+ * Copyright LWJGL. All rights reserved.
+ * License terms: https://www.lwjgl.org/license
+ */
+plugins {
+    `lwjgl-binding`
+}
+
+lwjgl {
+    dependencies {
+        compileOnly("egl")
+        compileOnly("opengl")
+        compileOnly("opengles")
+        compileOnly("vulkan")
+    }
+}
