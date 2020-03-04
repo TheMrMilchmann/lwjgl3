@@ -13,10 +13,10 @@ import java.util.*
 
 abstract class LWJGLModule(private val project: Project) {
 
-    private lateinit var _artifact: String
+    internal val _artifact: Property<String> = project.objects.property(String::class)
 
     var artifact: String
-        get() = _artifact
+        get() = _artifact.get()
         set(value) {
             with (project) {
                 project.extensions.configure<PublishingExtension> {
@@ -24,7 +24,7 @@ abstract class LWJGLModule(private val project: Project) {
                 }
             }
 
-            _artifact = value
+            _artifact.set(value)
         }
 
     var platforms: EnumSet<Platforms> = EnumSet.noneOf(Platforms::class.java)

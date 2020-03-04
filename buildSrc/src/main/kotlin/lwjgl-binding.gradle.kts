@@ -3,6 +3,7 @@
  * License terms: https://www.lwjgl.org/license
  */
 import org.lwjgl.build.*
+import org.lwjgl.build.BuildType
 
 plugins {
     kotlin("jvm")
@@ -10,7 +11,6 @@ plugins {
     signing
 }
 
-val lwjglVersion: String by project
 val deployment = Deployment(project)
 
 java {
@@ -38,6 +38,9 @@ artifacts {
 }
 
 tasks {
+    jar {
+        archiveBaseName.set(lwjglBinding._artifact)
+    }
     create<Jar>("sourcesJar") {
         archiveBaseName.set((tasks["jar"] as Jar).archiveBaseName)
         archiveClassifier.set("sources")
@@ -106,7 +109,7 @@ publishing {
 }
 
 signing {
-    isRequired = false // TODO
+    isRequired = (deployment.type === BuildType.RELEASE)
     sign(publishing.publications)
 }
 
