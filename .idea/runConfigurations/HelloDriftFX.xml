@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="HelloDriftFX" type="Application" factoryName="Application" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="org.lwjgl.demo.driftfx.HelloDriftFX" />
-    <module name="samples" />
+    <module name="LWJGL3.samples.test" />
     <option name="VM_PARAMETERS" value="-Ddriftfx.showfps=true -Djavafx.animation.fullspeed=true" />
     <method v="2">
       <option name="Make" enabled="true" />
