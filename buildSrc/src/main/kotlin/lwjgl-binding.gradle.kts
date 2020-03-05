@@ -2,6 +2,7 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
+import org.jetbrains.kotlin.gradle.tasks.*
 import org.lwjgl.build.*
 import org.lwjgl.build.BuildType
 import org.lwjgl.build.tasks.*
@@ -47,6 +48,17 @@ tasks {
             "-Xlint:all",
             "-XDignore.symbol.file" // Suppresses internal API (e.g. Unsafe) usage warnings
         )
+    }
+    withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "1.8"
+            freeCompilerArgs = listOf(
+                "-Xno-call-assertions",
+                "-Xno-param-assertions",
+                "-Xreport-perf",
+                "-progressive"
+            )
+        }
     }
 
     val generate = create<Generate>("generate") {
