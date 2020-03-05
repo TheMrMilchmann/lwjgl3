@@ -8,6 +8,7 @@ import org.gradle.api.*
 import org.gradle.api.file.*
 import org.gradle.api.tasks.*
 import org.gradle.internal.jvm.*
+import java.io.*
 
 @CacheableTask
 open class Generate : DefaultTask() {
@@ -18,6 +19,13 @@ open class Generate : DefaultTask() {
 
     @Input
     lateinit var bindings: List<String>
+
+    @OutputDirectories
+    @Suppress("UNUSED")
+    val outputDirectories = File(project.rootDir, "modules/lwjgl")
+        .listFiles(FileFilter { it.isDirectory })!!
+        .map { File(it, "src/main/generated") }
+        .filter { it.isDirectory }
 
     @TaskAction
     fun generate() {
