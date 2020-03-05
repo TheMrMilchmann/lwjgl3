@@ -40,6 +40,12 @@ artifacts {
 tasks {
     withType<JavaCompile> {
         options.encoding = "utf-8"
+
+        // TODO <compilerarg line='--boot-class-path "${env.JAVA8_HOME}/jre/lib/rt.jar${path.separator}${env.JAVA8_HOME}/jre/lib/ext/jfxrt.jar"' if:set="set-boot-class-path"/>
+        options.compilerArgs = listOf(
+            "-Xlint:all",
+            "-XDignore.symbol.file" // Suppresses internal API (e.g. Unsafe) usage warnings
+        )
     }
 
     jar {
