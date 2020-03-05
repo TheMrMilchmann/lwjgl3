@@ -38,6 +38,10 @@ artifacts {
 }
 
 tasks {
+    withType<JavaCompile> {
+        options.encoding = "utf-8"
+    }
+
     jar {
         archiveBaseName.set(lwjglCore._artifact)
     }
@@ -48,6 +52,8 @@ tasks {
     }
     javadoc {
         isFailOnError = false
+
+        options.encoding = "utf-8"
     }
     create<Jar>("javadocJar") {
         dependsOn(javadoc)

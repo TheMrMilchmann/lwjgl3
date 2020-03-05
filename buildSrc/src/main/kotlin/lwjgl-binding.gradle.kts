@@ -4,6 +4,7 @@
  */
 import org.lwjgl.build.*
 import org.lwjgl.build.BuildType
+import org.lwjgl.build.tasks.*
 
 plugins {
     kotlin("jvm")
@@ -38,6 +39,16 @@ artifacts {
 }
 
 tasks {
+    withType<JavaCompile> {
+        options.encoding = "utf-8"
+    }
+
+    val generate = create<Generate>("generate") {
+        classpath = templatesSourceSet.runtimeClasspath
+    }
+    compileJava {
+        dependsOn(generate)
+    }
     jar {
         archiveBaseName.set(lwjglBinding._artifact)
     }
@@ -48,6 +59,8 @@ tasks {
     }
     javadoc {
         isFailOnError = false
+
+        options.encoding = "utf-8"
     }
     create<Jar>("javadocJar") {
         dependsOn(javadoc)
