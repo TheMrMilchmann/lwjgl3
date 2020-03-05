@@ -60,6 +60,9 @@ tasks {
         }
     }
 
+    compileJava {
+        dependsOn(project(":generator").tasks["generate"])
+    }
     jar {
         archiveBaseName.set(lwjglCore._artifact)
     }

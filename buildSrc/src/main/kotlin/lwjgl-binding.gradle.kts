@@ -61,11 +61,8 @@ tasks {
         }
     }
 
-    val generate = create<Generate>("generate") {
-        classpath = templatesSourceSet.runtimeClasspath
-    }
     compileJava {
-        dependsOn(generate)
+        dependsOn(project(":generator").tasks["generate"])
     }
     jar {
         archiveBaseName.set(lwjglBinding._artifact)

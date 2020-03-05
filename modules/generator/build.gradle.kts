@@ -3,6 +3,7 @@
  * License terms: https://www.lwjgl.org/license
  */
 import org.jetbrains.kotlin.gradle.tasks.*
+import org.lwjgl.build.tasks.*
 
 plugins {
     `java-library`
@@ -26,6 +27,36 @@ tasks {
             )
         }
     }
+
+    val generate = create<Generate>("generate")
+
+    val configureGenerate = create("configureGenerate") {
+        doLast {
+            var classpath: FileCollection = files()
+            val bindings = mutableListOf<String>()
+
+            rootProject.childProjects.values.filter { it.name.startsWith("lwjgl.") }.forEach { lwjglModule ->
+                println(lwjglModule)
+
+                if (gradle.taskGraph.hasTask(lwjglModule.tasks["compileJava"])) {
+                    println("in graph")
+                    classpath += lwjglModule.sourceSets["templates"].runtimeClasspath
+                    bindings.add(lwjglModule.name.removePrefix("lwjgl."))
+                }
+            }
+
+            generate.classpath = classpath
+            generate.bindings = bindings
+        }
+    }
+
+    getByName<Generate>(generate.name) {
+        dependsOn(configureGenerate)
+
+        classpath = files()
+        bindings = mutableListOf()
+    }
+
 }
 
 dependencies {
