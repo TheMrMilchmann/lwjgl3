@@ -3,7 +3,6 @@
  * License terms: https://www.lwjgl.org/license
  */
 plugins {
-    `java-library`
     kotlin("jvm")
 }
 
@@ -13,5 +12,6 @@ java {
 }
 
 dependencies {
-    api(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib-jdk8"))
+    implementation(project(":lwjgl.llvm"))
 }
