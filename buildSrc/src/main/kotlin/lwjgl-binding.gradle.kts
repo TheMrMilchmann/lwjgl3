@@ -61,8 +61,11 @@ tasks {
         }
     }
 
-    compileJava {
+    val generate = create("generate") {
         dependsOn(project(":generator").tasks["generate"])
+    }
+    compileJava {
+        dependsOn(generate)
     }
     jar {
         archiveBaseName.set(lwjglBinding._artifact)

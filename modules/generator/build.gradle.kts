@@ -36,10 +36,7 @@ tasks {
             val bindings = mutableListOf<String>()
 
             rootProject.childProjects.values.filter { it.name.startsWith("lwjgl.") }.forEach { lwjglModule ->
-                println(lwjglModule)
-
-                if (gradle.taskGraph.hasTask(lwjglModule.tasks["compileJava"])) {
-                    println("in graph")
+                if (gradle.taskGraph.hasTask(lwjglModule.tasks["generate"])) {
                     classpath += lwjglModule.sourceSets["templates"].runtimeClasspath
                     bindings.add(lwjglModule.name.removePrefix("lwjgl."))
                 }
@@ -52,6 +49,7 @@ tasks {
 
     getByName<Generate>(generate.name) {
         dependsOn(configureGenerate)
+        onlyIf { bindings.isNotEmpty() }
 
         classpath = files()
         bindings = mutableListOf()
