@@ -16,3 +16,17 @@ allprojects {
         mavenCentral()
     }
 }
+
+tasks {
+    create("generate") {
+        project(":generator").tasks.whenTaskAdded {
+            if (name == "generate") this@create.dependsOn(this)
+        }
+
+        rootProject.childProjects.values.filter { it.name.startsWith("lwjgl.") }.forEach { lwjglModule ->
+            lwjglModule.tasks.whenTaskAdded {
+                if (name == "generate") this@create.dependsOn(this)
+            }
+        }
+    }
+}
