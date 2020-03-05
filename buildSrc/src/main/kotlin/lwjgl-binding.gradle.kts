@@ -150,4 +150,7 @@ dependencies {
     templatesSourceSet.implementationConfigurationName(project(":lwjgl.core", configuration = templates.name))
 
     compileOnly(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2")
+    testCompileOnly(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2")
+
+    testImplementation(group = "org.testng", name = "testng", version = "7.0.0")
 }
