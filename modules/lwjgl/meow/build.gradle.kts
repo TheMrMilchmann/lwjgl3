@@ -13,5 +13,9 @@ lwjgl {
     artifact = "lwjgl-meow"
     projectName = "LWJGL - Meow bindings"
     projectDesc = "An extremely fast non-cryptographic hash."
-    platforms(Platforms.LINUX, Platforms.LINUX_ARM64, Platforms.MACOS, Platforms.WINDOWS, Platforms.WINDOWS_X86)
+    platforms(
+        Platforms.LINUX, Platforms.LINUX_ARM64,
+        Platforms.MACOS, Platforms.MACOS_ARM64,
+        Platforms.WINDOWS, Platforms.WINDOWS_X86, Platforms.WINDOWS_ARM64
+    )
 }
