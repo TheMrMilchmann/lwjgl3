@@ -32,6 +32,7 @@ val templates = configurations.create("templates") {
 
 val templatesJar = tasks.create<Jar>("templatesJar") {
     from(templatesSourceSet.output)
+    project(":generator").tasks["generate"].dependsOn(this)
 }
 
 artifacts {
@@ -46,6 +47,16 @@ tasks {
         dependsOn(generate)
 
         options.release.set(8)
+    }
+    templatesSourceSet.compileJavaTaskName {
+        onlyIf { rootProject.extra.properties.getOrDefault("binding.${project.name.removePrefix("lwjgl.")}", false) as Boolean }
+    }
+    whenTaskAdded {
+        if (name == "compileTemplatesKotlin") {
+            onlyIf {
+                rootProject.extra.properties.getOrDefault("binding.${project.name.removePrefix("lwjgl.")}", false) as Boolean
+            }
+        }
     }
 }
 

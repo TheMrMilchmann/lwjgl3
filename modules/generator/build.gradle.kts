@@ -4,6 +4,7 @@
 */
 @file:Suppress("UnstableApiUsage")
 import org.jetbrains.kotlin.gradle.tasks.*
+import org.lwjgl.build.*
 import org.lwjgl.build.tasks.*
 
 plugins {
@@ -82,6 +83,13 @@ tasks {
 
             rootProject.childProjects.values.filter { it.name.startsWith("lwjgl.") }.forEach { lwjglModule ->
                 if (gradle.taskGraph.hasTask(lwjglModule.tasks["generate"])) {
+                    fun String.enable() {
+                        rootProject.extra["binding.${this.removePrefix("lwjgl.")}"] = true
+                    }
+
+                    lwjglModule.name.enable()
+                    lwjglModule.the<LWJGLModule>().bindingDependencies.forEach(String::enable)
+
                     classpath += lwjglModule.sourceSets["templates"].runtimeClasspath
                     bindings.add(lwjglModule.name.removePrefix("lwjgl."))
                 }

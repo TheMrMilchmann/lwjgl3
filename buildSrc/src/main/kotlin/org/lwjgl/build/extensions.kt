@@ -40,12 +40,14 @@ abstract class LWJGLModule(private val project: Project) {
         get() = _projectDesc.get()
         set(value) = _projectDesc.set(value)
 
+    val bindingDependencies = mutableListOf<String>()
+
 }
 
 open class LWJGLBinding(private val project: Project) : LWJGLModule(project) {
 
     fun dependencies(configuration: LWJGLDependencyHandlerScope.() -> Unit) {
-        configuration(LWJGLDependencyHandlerScope(project))
+        configuration(LWJGLDependencyHandlerScope(project, this))
     }
 
 }
