@@ -8,8 +8,9 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
 }
 
 tasks {
@@ -48,6 +49,25 @@ tasks {
     test {
         useTestNG()
     }
+
+    jmh {
+        if ("benchmark-filter" in project.properties) {
+            includes.add(project.properties["benchmark-filter"] as String)
+        } else {
+            throw GradleException("Run with:\n\tgradlew jmh -Pbenchmark-filter=<regex>")
+        }
+
+        fork.set(1)
+//        profilers.add("perf")
+//        profilers.add("gc")
+        warmupIterations.set(2)
+        iterations.set(3)
+        timeOnIteration.set("1s")
+        warmup.set("1s")
+        benchmarkMode.add("avgt")
+        timeUnit.set("ns")
+        jvmArgsPrepend.add("-server")
+    }
 }
 
 dependencies {
@@ -56,5 +76,7 @@ dependencies {
     }
     testImplementation(group = "org.joml", name = "joml", version = "1.9.22")
     testImplementation(group = "org.testng", name = "testng", version = "7.0.0")
-    testCompileOnly(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2")
+
+    jmh(group = "org.openjdk.jmh", name = "jmh-core", version = "1.33")
+    jmh(group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version = "1.33")
 }
