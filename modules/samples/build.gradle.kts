@@ -2,6 +2,8 @@
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  */
+import me.champeau.jmh.*
+
 plugins {
     kotlin("jvm")
     id("me.champeau.jmh")
@@ -11,6 +13,19 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
     }
+}
+
+jmh {
+    fork.set(1)
+//    profilers.add("perf")
+//    profilers.add("gc")
+    warmupIterations.set(2)
+    iterations.set(3)
+    timeOnIteration.set("1s")
+    warmup.set("1s")
+    benchmarkMode.add("avgt")
+    timeUnit.set("ns")
+    jvmArgsPrepend.add("-server")
 }
 
 tasks {
@@ -50,23 +65,12 @@ tasks {
         useTestNG()
     }
 
-    jmh {
+    named<JMHTask>("jmh") {
         if ("benchmark-filter" in project.properties) {
             includes.add(project.properties["benchmark-filter"] as String)
         } else {
             throw GradleException("Run with:\n\tgradlew jmh -Pbenchmark-filter=<regex>")
         }
-
-        fork.set(1)
-//        profilers.add("perf")
-//        profilers.add("gc")
-        warmupIterations.set(2)
-        iterations.set(3)
-        timeOnIteration.set("1s")
-        warmup.set("1s")
-        benchmarkMode.add("avgt")
-        timeUnit.set("ns")
-        jvmArgsPrepend.add("-server")
     }
 }
 
