@@ -12,7 +12,7 @@ plugins {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(16))
+        languageVersion.set(JavaLanguageVersion.of(8))
     }
 
     withSourcesJar()
@@ -45,7 +45,11 @@ tasks {
     compileJava {
         dependsOn(generate)
 
-        options.release.set(8)
+        options.encoding = "utf-8"
+        options.compilerArgs = listOf(
+            "-Xlint:all",
+            "-XDignore.symbol.file" // Suppresses internal API (e.g. Unsafe) usage warnings
+        )
     }
 }
 

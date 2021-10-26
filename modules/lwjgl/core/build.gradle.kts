@@ -19,7 +19,10 @@ lwjgl {
 tasks {
     val compileJava9 = create<JavaCompile>("compileJava9") {
         destinationDirectory.set(File(buildDir, "classes/java9/main"))
-        options.release.set(9)
+
+        javaCompiler.set(project.javaToolchains.compilerFor {
+            languageVersion.set(JavaLanguageVersion.of(9))
+        })
 
         val java9Source = fileTree("src/main/java9") {
             include("**/*.java")
@@ -27,11 +30,22 @@ tasks {
 
         source = java9Source
         options.sourcepath = files(sourceSets["main"].java.srcDirs) + files(java9Source.dir)
+
+        classpath = files(compileJava.get().classpath)
+
+        options.encoding = "utf-8"
+        options.compilerArgs = listOf(
+            "-Xlint:all",
+            "-XDignore.symbol.file" // Suppresses internal API (e.g. Unsafe) usage warnings
+        )
     }
 
     val compileJava10 = create<JavaCompile>("compileJava10") {
         destinationDirectory.set(File(buildDir, "classes/java10/main"))
-        options.release.set(10)
+
+        javaCompiler.set(project.javaToolchains.compilerFor {
+            languageVersion.set(JavaLanguageVersion.of(10))
+        })
 
         val java10Source = fileTree("src/main/java10") {
             include("**/*.java")
@@ -39,6 +53,14 @@ tasks {
 
         source = java10Source
         options.sourcepath = files(sourceSets["main"].java.srcDirs) + files(java10Source.dir)
+
+        classpath = files(compileJava.get().classpath)
+
+        options.encoding = "utf-8"
+        options.compilerArgs = listOf(
+            "-Xlint:all",
+            "-XDignore.symbol.file" // Suppresses internal API (e.g. Unsafe) usage warnings
+        )
     }
 
     jar {

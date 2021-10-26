@@ -9,8 +9,9 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
 }
 
 tasks {
@@ -29,7 +30,7 @@ tasks {
     }
 
     create<JavaExec>("run") {
-        main = "org.lwjgl.extract.MainKt"
+        mainClass.set("org.lwjgl.extract.MainKt")
         workingDir = project.rootProject.projectDir
 
         classpath(
